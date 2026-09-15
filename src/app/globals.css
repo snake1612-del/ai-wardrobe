@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+:root {
+  --aw-canvas: #f8f7f3;
+  --aw-surface: #ffffff;
+  --aw-surface-muted: #f1f0eb;
+  --aw-surface-selected: #e7efea;
+  --aw-text-primary: #1f2321;
+  --aw-text-secondary: #59615d;
+  --aw-text-tertiary: #6b736f;
+  --aw-text-disabled: #858b88;
+  --aw-text-inverse: #ffffff;
+  --aw-border-subtle: #daddd8;
+  --aw-border-strong: #858d89;
+  --aw-focus: #31594b;
+  --aw-accent: #3e6658;
+  --aw-accent-hover: #35594d;
+  --aw-accent-pressed: #2c4c42;
+  --aw-success: #2f6b4f;
+  --aw-success-surface: #e7f2eb;
+  --aw-warning: #795b00;
+  --aw-warning-surface: #fff4cc;
+  --aw-error: #a23434;
+  --aw-error-surface: #fce9e9;
+  --aw-info: #365f7b;
+  --aw-info-surface: #eaf2f7;
+  --aw-radius-sm: 0.5rem;
+  --aw-radius-md: 0.75rem;
+  --aw-radius-lg: 1rem;
+  --aw-shadow-raised: 0 1px 2px rgb(31 35 33 / 6%);
+  --aw-shadow-overlay: 0 8px 24px rgb(31 35 33 / 10%);
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-canvas: var(--aw-canvas);
+  --color-surface: var(--aw-surface);
+  --color-surface-muted: var(--aw-surface-muted);
+  --color-surface-selected: var(--aw-surface-selected);
+  --color-text-primary: var(--aw-text-primary);
+  --color-text-secondary: var(--aw-text-secondary);
+  --color-text-tertiary: var(--aw-text-tertiary);
+  --color-border-subtle: var(--aw-border-subtle);
+  --color-border-strong: var(--aw-border-strong);
+  --color-focus: var(--aw-focus);
+  --color-accent: var(--aw-accent);
+  --color-accent-hover: var(--aw-accent-hover);
+  --color-accent-pressed: var(--aw-accent-pressed);
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--aw-canvas);
+  color: var(--aw-text-primary);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--aw-canvas);
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--aw-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--aw-surface-selected);
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  border-radius: var(--aw-radius-sm);
+  background: var(--aw-text-primary);
+  color: var(--aw-text-inverse);
+  padding: 0.75rem 1rem;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
