@@ -1,11 +1,11 @@
 # AI Wardrobe — Project State
 
 **Дата:** 2026-09-16
-**Статус:** Phase 7 technical gates passed / external review completed with documentation changes required / not approved
+**Статус:** Phase 7 approved / production deployment not run / Phase 8 next
 
 # Current Phase
 
-**Phase 7 — Authentication & Privacy Foundation — Technical acceptance passed / documentation remediated / repeat external review pending**
+**Phase 7 — Authentication & Privacy Foundation — Approved / not deployed**
 
 # Completed
 
@@ -18,7 +18,7 @@
 - Unit suite расширен до 36 проверок; secret scanner распознаёт modern `SUPABASE_SECRET_KEY`, сканирует Markdown/CSS и выполняет synthetic regression fixtures.
 - Browser suite расширен для real Mailpit→PKCE recovery, refresh rotation, expired session, same-profile account switch, hostile Server Action Origin и protected HTML headers.
 - Post-remediation quality gate пройден: clean replay всех 11 миграций, DB lint, 51/51 pgTAP, database type generation без schema/type drift, typecheck, 26/26 Playwright desktop/mobile, accessibility и secret scan — PASS.
-- External Phase 7 review завершён с outcome `CHANGES REQUIRED`: runtime/security implementation признана корректной без P0/P1, обязательным замечанием осталась синхронизация release documentation. Phase 7 отдельно не approved и production deployment не запускался.
+- Initial external Phase 7 review завершён с outcome `CHANGES REQUIRED` без P0/P1; документационный P2 и оба P3 исправлены. Repeat external review commit `544c089` завершён с outcome `APPROVE`, после чего пользователь явно утвердил Phase 7. Production deployment не запускался.
 
 - Определены product vision, problems, target users, JTBD и core user loop.
 - Описаны 19 ключевых journeys: onboarding, bulk import, manual/AI-assisted add, search, outfit creation/save/reuse, wear tracking, calendar, analytics, wishlist, declutter, packing, AI styling, weather recommendation, purchase checking, gap analysis и AI packing.
@@ -285,7 +285,7 @@ Open Questions предыдущих фаз сохранены выше; их н�
 
 # Phase 7 Acceptance Checklist
 
-All technical criteria below passed the post-remediation application, database and desktop/mobile browser gates. External review completed with outcome `CHANGES REQUIRED`; Phase 7 approval and production deployment remain separate, incomplete gates.
+All technical criteria below passed the post-remediation application, database and desktop/mobile browser gates. The initial external-review findings were remediated, repeat external review approved commit `544c089`, and the user explicitly approved Phase 7. Production deployment remains a separate, incomplete gate.
 
 - [x] Signup and password login use provider Auth without creating a browser-authorized account write path.
 - [x] Login failures do not disclose whether an email exists.
@@ -308,14 +308,17 @@ All technical criteria below passed the post-remediation application, database a
 - [x] Account switching clears user-scoped browser state before binding the next subject.
 - [x] Desktop and mobile browser flows pass automated accessibility checks.
 - [x] No onboarding, wardrobe CRUD, Storage, export/delete workflow or unrelated product scope was added.
-- [x] External Phase 7 review completed with outcome `CHANGES REQUIRED` and no P0/P1 findings.
-- [ ] Phase 7 approved.
-- [ ] Production deployment completed.
+- [x] Initial external Phase 7 review completed with outcome `CHANGES REQUIRED` and no P0/P1 findings.
+- [x] Repeat external review approved commit `544c089`.
+- [x] Phase 7 approved by explicit user decision.
+- [ ] Production deployment — NOT RUN.
 
 # Next Phase
 
-Phase 7 remediation and its technical quality gates are complete. The documentation finding from external review is now patched; repeat external review and a separate explicit approval are required before any broader product phase may start. The mandatory Bulk Import Source Audit remains a downstream gate for the final import contract/UX.
+**Phase 8 — next phase / not started.**
+
+Phase 7 implementation, remediation, technical gates, repeat external review and explicit approval are complete. Production deployment was not run. Phase 8 does not start automatically and requires a separate explicit request. The mandatory Bulk Import Source Audit remains a downstream gate for the final import contract/UX.
 
 # Gate
 
-**Status is implemented / technical gates passed / documentation remediation applied / repeat external review pending. Phase 7 approval and production deployment remain separate gates; Phase 7 is not approved or deployed.**
+**Phase 7 is approved. Production deployment is NOT RUN. Phase 8 is next and has not started.**
