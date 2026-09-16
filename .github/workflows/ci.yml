@@ -13,6 +13,7 @@ concurrency:
 
 env:
   APP_ENV: test
+  APP_ORIGIN: http://127.0.0.1:3000
   NEXT_TELEMETRY_DISABLED: "1"
   NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_synthetic_ci_key_00000000000000000000000
@@ -53,14 +54,14 @@ jobs:
       - run: pnpm db:lint
       - run: pnpm test:db
       - run: pnpm db:types
-      - run: rg 'accounts' src/infrastructure/database/database.types.ts
+      - run: rg 'bootstrap_account' src/infrastructure/database/database.types.ts
       - run: pnpm typecheck
       - if: always()
         run: pnpm exec supabase stop --no-backup
 
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     needs: application
     steps:
       - uses: actions/checkout@v6
@@ -71,5 +72,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm build
+      - run: pnpm db:start
+      - run: pnpm db:reset
       - run: pnpm test:e2e
+      - if: always()
+        run: pnpm exec supabase stop --no-backup

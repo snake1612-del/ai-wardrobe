@@ -849,4 +849,14 @@ The database access question is narrowed to a controlled hybrid (D-091): user-co
 
 Account bootstrap is deferred to Phase 7 as an idempotent trusted command over the unique `accounts.auth_user_id` binding (D-092); no premature Auth trigger or UI exists. PWA foundation is limited to the native manifest and design metadata. Service-worker/offline and authenticated-cache behavior remain gated by the browser matrix and privacy tests.
 
-Local Supabase is configured for PostgreSQL 17 and ten ordered migrations. The current workstation cannot execute them because neither Docker nor Podman is installed; CI contains the required fresh reset, DB lint, pgTAP and generated-type sequence. This execution gap is an explicit Phase 6 completion blocker, not an architecture deviation.
+Local Supabase is configured for PostgreSQL 17 and ten ordered migrations. On 2026-09-15 the current workstation completed the required fresh reset, DB lint, 37 pgTAP assertions and generated-type verification without schema drift. CI retains the same sequence; external Phase 6 review remains the approval gate.
+
+# Phase 7 Authentication Implementation Note
+
+The application now has three deliberately separate Supabase clients: browser-safe, user-context SSR and route-response SSR clients. The route client exists because a PKCE/OTP exchange must write rotated cookies to the exact redirect response. A fourth client is not a general data adapter: it is a server-only, non-persistent account-bootstrap capability using the secret key and one allowlisted RPC.
+
+The request path is `browser → Next proxy refresh/getUser → protected Server Component or Route Handler → user-context RLS read`. Anonymous `/app` requests redirect to `/auth`; anonymous `/api/account` requests receive 401. Account bootstrap occurs only after verified identity and reconciles on the unique Auth binding. No account, tenant or owner supplied by the browser is authorization evidence.
+
+Server Actions own password signup/login/recovery/update/logout mutations and enforce exact same-origin request metadata. Callback destinations are local allowlisted paths. Authenticated pages and account responses are dynamic and `private, no-store`; no service worker or shared private cache was introduced.
+
+This is an implemented and locally tested Phase 7 slice, not an approval claim. It adds no onboarding, wardrobe module, Storage path, import, export/deletion execution, job runner or public API.

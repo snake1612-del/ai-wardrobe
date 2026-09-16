@@ -1648,7 +1648,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      bootstrap_account: {
+        Args: { p_account_id: string; p_auth_user_id: string }
+        Returns: {
+          account_id: string
+          account_state: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

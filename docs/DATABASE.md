@@ -1431,4 +1431,16 @@ The migration inventory contains exactly 31 `public` application tables and no `
 
 Minimum committed Outfit composition, exact-one-default when variants exist, timezone/date correspondence, media replacement cycle detection, sealed Import commit and reviewed hard-delete preparation remain transaction/application invariants exactly as designed; they are not weakened into misleading row checks.
 
-Executable tests cover the 31-table inventory, absence of `source_version`, Russian/English/typo/short search fixtures, composite ownership, variant-to-item compatibility, duplicate Outfit/Wear physical identities, same-day separate WearEvents, scoped external identities, same-account media replacement, rendition uniqueness and RLS/grants. Migration replay and those DB tests have not yet run on this workstation because Docker/Podman is unavailable; this remains a Phase 6 approval gate.
+Executable tests cover the 31-table inventory, absence of `source_version`, Russian/English/typo/short search fixtures, composite ownership, variant-to-item compatibility, duplicate Outfit/Wear physical identities, same-day separate WearEvents, scoped external identities, same-account media replacement, rendition uniqueness and RLS/grants. On 2026-09-15 a clean local replay applied all ten migrations and seed; DB lint passed, all 37 pgTAP assertions passed, and regenerated types produced no Git diff. External Phase 6 review remains the approval gate.
+
+# Phase 7 Account Bootstrap Migration
+
+Migration 11, `auth_account_bootstrap`, adds no table and does not broaden ordinary Data API access. It adds one `SECURITY DEFINER` function with an empty search path:
+
+`bootstrap_account(p_auth_user_id uuid, p_account_id uuid) → (account_id, account_state)`
+
+Execution is revoked from `public`, `anon` and `authenticated` and granted only to `service_role`. The trusted server supplies both the already-verified Auth subject and a server-generated UUID. `accounts.auth_user_id` remains the race/retry authority: a conflicting retry resolves the existing account rather than accepting a new owner or creating a duplicate. `account_preferences` is inserted by primary-key conflict-safe logic.
+
+The pgTAP contract verifies first creation, retry with a different proposed UUID, exactly one account/preferences row, independent second identity and denial under the real authenticated role. The broader RLS suite also proves that User A full-text search cannot discover User B and that jobs/export/deletion tables have no authenticated SELECT grant. Generated TypeScript types include only the new RPC signature as the expected schema diff.
+
+Phase 7 does not add automatic `auth.users` triggers, browser account mutations, Household ownership or product rows. External Phase 7 review remains pending.

@@ -1,6 +1,6 @@
 # AI Wardrobe — Testing
 
-**Status:** Phase 6 foundation; database execution pending a Docker/Podman-capable environment.
+**Status:** Phase 7 technical quality gate passed; external review completed with documentation changes required; repeat external review pending.
 
 # Testing Principles
 
@@ -15,11 +15,11 @@ Tests prove server and database boundaries, not the visibility of a UI control. 
 
 # Unit Tests
 
-Vitest executes `tests/unit`. Current useful coverage includes public environment validation, stable application error codes/status mapping and structured-log redaction. Run `pnpm test`.
+Vitest executes `tests/unit`. Coverage includes environment validation, stable application errors, structured-log redaction, safe auth redirect allowlisting, canonical exact-origin validation and persistent owner-bound browser-state cleanup, including missing/mismatched markers and new-tab behavior. Run `pnpm test`.
 
 # Database Integration Tests
 
-pgTAP SQL under `supabase/tests/database` executes against the local migrated Supabase database. It verifies the 31-table inventory, UUID foundation, `pg_trgm`, same-row search, composite ownership, AppearanceVariant compatibility, Outfit physical-item uniqueness, Wear snapshot uniqueness, same-day distinct events, scoped external IDs, media replacement ownership and rendition uniqueness.
+pgTAP SQL under `supabase/tests/database` executes against the local migrated Supabase database. It verifies the 31-table inventory, UUID foundation, `pg_trgm`, same-row search, composite ownership, AppearanceVariant compatibility, Outfit/Wear uniqueness, scoped external IDs, media ownership, RLS/grants and service-role-only account-bootstrap idempotency.
 
 Run `pnpm db:start`, `pnpm db:reset`, then `pnpm test:db`.
 
@@ -39,22 +39,22 @@ The test changes to the real `authenticated` role and supplies a synthetic JWT s
 The database release gate is:
 
 ```text
-fresh local stack → replay all ten migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
+fresh local stack → replay all eleven migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
 ```
 
 CI repeats this from an empty runner. No manual dashboard step is accepted as schema history.
 
 # Browser Smoke Tests
 
-Playwright runs the compiled application in desktop and mobile Chromium projects. It checks the root landmark/heading, absence of fatal console errors and the redacted health response. Run `pnpm build` before `pnpm test:e2e` when no reusable server is active.
+Playwright runs the compiled application in desktop and mobile Chromium. The E2E runner reads local Supabase status without logging credentials, rebuilds with the real local public/server environment, then checks anonymous protection, signup/login/logout, real Mailpit recovery through PKCE callback, access/refresh-token rotation, expired/revoked/invalid sessions, same-profile switching across tabs/context restart, ignored client account IDs, hostile Server Action Origin, canonical callback redirects, private/no-store headers, shell and health behavior.
 
 # Accessibility Tests
 
-`@axe-core/playwright` checks the foundation shell in both viewports. Semantic HTML, `lang="ru"`, keyboard focus, skip navigation and reduced-motion styling also require manual review as interactive features arrive.
+`@axe-core/playwright` checks the public foundation shell and the auth page after invalid-session handling in both viewports. Semantic HTML, labelled fields, pending/error feedback, `lang="ru"`, keyboard focus, skip navigation and reduced-motion styling remain manual review companions.
 
 # Security Regression Tests
 
-Current automated checks cover known-ID cross-user reads, missing anonymous grants, missing direct mutation grants, cross-account FK injection and sensitive log-key removal. Future feature suites must add Auth/session, IDOR, CSRF origin, private Storage, upload validation, cache isolation, export/deletion and replay tests before those capabilities ship.
+Automated definitions cover known-ID and search cross-user reads, account API scope, missing anonymous/direct/operational grants, cross-account FK injection, privileged bootstrap denial/idempotency, canonical redirect/origin policy, invalid sessions, recovery enumeration resistance, private/no-store responses, persistent owner binding and secret patterns. Definitions are not reported passing until their command completes. Private Storage, uploads, export/deletion and product-object IDOR remain future feature gates.
 
 # Fixtures
 
@@ -62,12 +62,14 @@ SQL fixtures use reserved-looking UUIDs and `example.invalid` emails. No real us
 
 # CI Gates
 
-The application job runs frozen install, formatting, lint, typecheck, unit tests and build. The database job starts local Supabase, resets/replays, lints, runs pgTAP and generates types. The browser job installs Chromium and runs Playwright/axe. CI has read-only repository permission and only synthetic public configuration.
+The application job runs frozen install, formatting, lint, typecheck, unit tests and build. The database job starts local Supabase, resets/replays, lints, runs pgTAP and generates types. The browser job starts/resets local Supabase, installs Chromium and runs the real auth Playwright/axe flow, then always stops the stack. CI has read-only repository permission.
 
 # What Is Deferred
 
-Product flow tests, Auth/session tests, Storage tests, upload/image adversarial fixtures, import archives, background workers, accessibility interaction coverage and performance budgets are deferred to the phases that implement those capabilities. Source Audit remains mandatory before real import fixtures or detailed Bulk Import behavior.
+Wardrobe product flows, OAuth/MFA, production email, Storage, upload/image adversarial fixtures, import archives, background workers and performance budgets are deferred to the phases that implement those capabilities. Source Audit remains mandatory before real import fixtures or detailed Bulk Import behavior.
 
 # Phase-specific Release Gates
 
-Phase 6 requires every application, database and browser command to pass, generated types to reflect the migrated schema, and a manual no-secret/no-public-storage review. On this workstation the application and browser gates pass; the database gate is pending solely because Docker/Podman is unavailable. Therefore Phase 6 must remain unapproved until CI or a suitable local machine records passing DB migration/RLS results.
+Phase 7 requires application/database/browser gates, generated bootstrap types, a manual secret boundary review and the checklist in `PROJECT_STATE.md`.
+
+Post-review remediation status on 2026-09-16: `pnpm check` PASS, including formatting, lint, typecheck, 36/36 unit assertions and production build; clean replay of all 11 migrations PASS; DB lint PASS; 51/51 pgTAP PASS; database type generation PASS with no unexpected schema/type drift; 26/26 Playwright desktop/mobile PASS, including automated accessibility; secret scan PASS. External review is COMPLETED with outcome `CHANGES REQUIRED`, no P0/P1 findings and a documentation-only mandatory fix. Phase 7 is not approved and production deployment was not run; repeat external review and explicit approval remain separate gates.

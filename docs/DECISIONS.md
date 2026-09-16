@@ -2295,3 +2295,30 @@ Reference codes remain stable and Russian labels are presentation values. Produc
 ### Status
 
 Recommended — pending Phase 6 approval.
+
+## D-096 — Cookie mutations require exact same-origin validation and bootstrap stays capability-specific
+
+### Decision
+
+For Phase 7 password/session Server Actions, require an exact `Origin` match against the effective host and forwarded protocol in addition to Supabase cookie defaults. Treat SameSite as defense in depth. PKCE/OTP callback GETs are authorized by one-time provider material and allowlisted local redirect destinations. Keep account creation behind one server-only, service-role-only `bootstrap_account` capability invoked only after `auth.getUser()` verifies the subject.
+
+### Why
+
+Cookie authentication alone does not prove that a mutation was intentionally initiated by this origin. Conversely, a broad privileged database client would erase the useful RLS/grant boundary. Exact origin validation addresses the implemented browser mutation surface, while a narrow idempotent function provides the minimum authority needed to reconcile Auth identity with the durable account.
+
+### Alternatives considered
+
+- Rely only on SameSite/framework defaults.
+- Add a separate synchronizer token to the current Server Action forms.
+- Create accounts with an `auth.users` trigger.
+- Expose account INSERT or a broad service-role repository to ordinary application code.
+
+### Consequences
+
+Deployments must preserve trustworthy host/protocol headers and test the configured proxy chain. Non-browser clients do not receive a cookie mutation API in this phase. Any future cross-origin surface must define its own explicit anti-CSRF/authentication contract. The bootstrap secret remains server-only, the function chooses/reconciles server-controlled identity data, and every new privileged operation requires a separate capability and review.
+
+External-review remediation uses required server-only `APP_ORIGIN` as the canonical Auth redirect and mutation origin. Incoming Host and forwarded protocol are consistency checks only: missing protocol, lists and mismatches fail closed, and forwarded host never constructs a redirect destination.
+
+### Status
+
+Recommended — pending external Phase 7 review.

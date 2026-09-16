@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: "AI Wardrobe",
   description: "Приватный цифровой гардероб — foundation environment.",
   applicationName: "AI Wardrobe",
+  icons: { icon: "/icon.svg" },
   robots: { index: false, follow: false },
 };
 
