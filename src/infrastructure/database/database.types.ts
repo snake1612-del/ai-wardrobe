@@ -1655,6 +1655,107 @@ export type Database = {
           account_state: string
         }[]
       }
+      claim_media_job: {
+        Args: { p_lease_seconds?: number; p_worker_id: string }
+        Returns: {
+          account_id: string
+          attempt_count: number
+          job_id: string
+          job_type: string
+          max_attempts: number
+          media_asset_id: string
+          payload: Json
+        }[]
+      }
+      complete_media_upload: {
+        Args: {
+          p_account_id: string
+          p_asset_id: string
+          p_idempotency_key: string
+          p_observed_byte_size: number
+          p_request_hash: string
+        }
+        Returns: {
+          asset_id: string
+          job_id: string
+          processing_state: string
+        }[]
+      }
+      create_media_upload_intent: {
+        Args: {
+          p_account_id: string
+          p_appearance_variant_id: string
+          p_asset_id: string
+          p_declared_byte_size: number
+          p_declared_mime_type: string
+          p_idempotency_key: string
+          p_image_view: string
+          p_item_id: string
+          p_original_filename: string
+          p_product_role: string
+          p_replaces_asset_id: string
+          p_request_hash: string
+        }
+        Returns: {
+          asset_id: string
+          processing_state: string
+          storage_bucket: string
+          storage_object_key: string
+        }[]
+      }
+      fail_media_job: {
+        Args: {
+          p_failure_code: string
+          p_job_id: string
+          p_retry_delay_seconds?: number
+          p_worker_id: string
+        }
+        Returns: string
+      }
+      finalize_media_cleanup: {
+        Args: { p_job_id: string; p_worker_id: string }
+        Returns: boolean
+      }
+      record_media_processing: {
+        Args: { p_job_id: string; p_renditions: Json; p_worker_id: string }
+        Returns: string
+      }
+      record_media_validation: {
+        Args: {
+          p_byte_size: number
+          p_content_hash: string
+          p_failure_code: string
+          p_height_px: number
+          p_job_id: string
+          p_quarantine: boolean
+          p_valid: boolean
+          p_verified_mime_type: string
+          p_width_px: number
+          p_worker_id: string
+        }
+        Returns: string
+      }
+      remove_media_binding: {
+        Args: {
+          p_account_id: string
+          p_binding_id: string
+          p_expected_item_version: number
+          p_item_id: string
+        }
+        Returns: number
+      }
+      retry_media_asset: {
+        Args: {
+          p_account_id: string
+          p_asset_id: string
+          p_expected_version: number
+        }
+        Returns: {
+          asset_id: string
+          asset_version: number
+          processing_state: string
+        }[]
+      }
       save_wardrobe_item: {
         Args: {
           p_account_id: string
@@ -1696,6 +1797,16 @@ export type Database = {
         Returns: {
           item_id: string
         }[]
+      }
+      set_media_gallery: {
+        Args: {
+          p_account_id: string
+          p_binding_ids: string[]
+          p_expected_item_version: number
+          p_item_id: string
+          p_primary_binding_id: string
+        }
+        Returns: number
       }
       set_wardrobe_item_state: {
         Args: {

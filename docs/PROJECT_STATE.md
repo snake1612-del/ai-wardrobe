@@ -1,11 +1,11 @@
 # AI Wardrobe — Project State
 
-**Дата:** 2026-09-17
-**Статус:** Phase 8 approved: YES / production deployment: NOT RUN / Phase 9: next phase, not started
+**Дата:** 2026-09-18
+**Статус:** Phase 8 approved: YES / Phase 9 approved: YES — APPROVE WITH WARNINGS / production deployment: NOT RUN / Phase 10: not started
 
 # Current Phase
 
-**Phase 8 — Wardrobe Core — Approved / production deployment NOT RUN; Phase 9 is next and not started**
+**Phase 9 — Private Media Foundation — Approved with documented warnings / production deployment NOT RUN / Phase 10 NOT STARTED**
 
 # Completed
 
@@ -29,6 +29,9 @@
 - Phase 8 final gate после remediation: 12-migration clean replay, DB lint, 90/90 pgTAP, generated types без unexpected drift, 51/51 unit, 32/32 Playwright desktop/mobile, accessibility, hostile-Origin CSRF replay, User A/B isolation, secret scan и production build — PASS.
 - Local WSL development origin разрешён только как canonical HTTP origin на loopback/RFC1918 адресе при `NODE_ENV != production` и `APP_ENV=local`; production path по-прежнему требует HTTPS.
 - Read-only Source Audit не выполнен: каталог `sources/` и реальный source archive отсутствуют. Данные не выдумывались; Bulk Import, production records и activation contract implementation не создавались.
+- Реализован Phase 9 Private Media Foundation: authenticated TUS, private Storage RLS, server-derived immutable paths, quarantined validation/processing, три WebP rendition, authorized same-origin delivery и versioned gallery mutations.
+- Phase 9 local gate пройден: clean replay 13 миграций, DB lint, 146/146 pgTAP, real Storage API integration, stable generated types, 65/65 unit, 36/36 Playwright desktop/mobile, accessibility, repository/browser-bundle secret scan, schema inventory и production build — PASS.
+- Phase 9 external review outcome — `APPROVE WITH WARNINGS`; пользователь явно утвердил Phase 9 с перечисленными ниже ограничениями.
 
 - Определены product vision, problems, target users, JTBD и core user loop.
 - Описаны 19 ключевых journeys: onboarding, bulk import, manual/AI-assisted add, search, outfit creation/save/reuse, wear tracking, calendar, analytics, wishlist, declutter, packing, AI styling, weather recommendation, purchase checking, gap analysis и AI packing.
@@ -355,8 +358,38 @@ Technical criteria below passed locally on 2026-09-17. Independent review findin
 
 # Next Step
 
-**Close Phase 8 without merge or deployment, then prepare the separate Phase 9 branch and planning scope. Phase 9 implementation has not started.**
+**Publish the approved Phase 9 branch and review it as a stacked PR while Phase 8 PR #2 remains open. Phase 10 is the next phase but is not started; merge and production deployment require separate permission.**
 
 # Gate
 
-**Phase 8 is implemented, externally reviewed, remediated and explicitly approved. Production deployment is NOT RUN. Phase 9 is next and not started.**
+**Phase 8 is approved. Phase 9 design D-098 is implemented, independently reviewed and explicitly approved with warnings. Production deployment is NOT RUN and Phase 10 is NOT STARTED.**
+
+# Phase 9 Acceptance Checklist
+
+The checklist records the verified local gates for Private Media Foundation. Technical implementation and review items passed; approval and production deployment remain separate explicit gates.
+
+- [x] Upload intent derives the active account server-side and returns only a server-selected immutable `wardrobe-originals` object path.
+- [x] Browser upload uses authenticated Supabase TUS with the current user JWT, no signed upload URL and no persisted cross-account resume capability.
+- [x] Private `wardrobe-originals` and `wardrobe-renditions` buckets enforce Storage RLS; anonymous access, cross-account known paths, overwrite, original reads and direct rendition writes are denied.
+- [x] Completion verifies the exact object via Storage API, is idempotent/replay-safe and schedules one validation job.
+- [x] Only JPEG, PNG and WebP pass magic-byte, full decode, single-frame, 12,000-axis and 40-megapixel validation; HEIC/HEIF, SVG, GIF, AVIF, PDF, fake MIME and corrupt payloads fail safely.
+- [x] An isolated pinned sharp/libvips worker supports bounded lease/retry/crash recovery and creates immutable `media-v1` WebP thumbnail, medium and full renditions.
+- [x] Unconfirmed, failed or quarantined uploads never become production-ready media.
+- [x] Authorized same-origin rendition delivery re-verifies user/account/RLS and returns `private, no-store` and `nosniff`; originals have no browser delivery path.
+- [x] Gallery primary/reorder/replace/remove preserve entity boundaries, optimistic concurrency and ready-only publishing; archiving a ClothingItem does not delete media.
+- [x] Cleanup marks unreferenced assets/renditions pending delete and reconciles objects only through Storage API, never direct SQL writes to `storage.objects`.
+- [x] Loading, progress, retry, failed, quarantined, ready and accessible placeholder states work on desktop and mobile.
+- [x] Unit, pgTAP, real Storage API integration, User A/User B known-ID, anonymous, CSRF, TUS retry/replay, worker and cache-header tests pass.
+- [x] Browser bundle and repository secret scans pass; service-role credentials remain server/worker-only.
+- [x] Generated database types match migration 013 with no unexpected drift.
+- [x] Bulk Import, onboarding, Outfits, Wear, Analytics, AI, export/delete and Phase 10 are not implemented.
+- [x] External review — `APPROVE WITH WARNINGS`; implementation-pass findings were remediated and no blocking findings remain.
+- [x] Phase 9 approved — YES by explicit user decision on 2026-09-18.
+- [ ] Production deployment — NOT RUN.
+
+## Accepted Phase 9 Warnings
+
+- Hosted Supabase Storage and a production worker scheduler were not validated because production deployment is not authorized.
+- General antivirus is not part of the allowlisted manual-image scope; protection is limited to format allowlisting, magic-byte/full-decode validation, bounded dimensions/pixels and safe WebP re-encoding.
+- Database type generation may emit the known nonfatal `MaxListenersExceededWarning`; repeated generation is byte-for-byte stable.
+- These are documented constraints of the approved phase and do not authorize AV work, production deployment or Phase 10 implementation.

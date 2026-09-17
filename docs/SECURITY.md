@@ -375,3 +375,17 @@ Local Phase 8 security gate passed with 90/90 pgTAP, 51/51 unit, 32/32 Playwrigh
 Local WSL development may use canonical HTTP `APP_ORIGIN` only for loopback or RFC1918 IPv4 when both the runtime is non-production and `APP_ENV=local`; the parser rejects public HTTP and every non-HTTP(S) scheme. Production keeps the HTTPS-only policy, and Next development-origin configuration is omitted from production builds.
 
 Independent Phase 8 security review initially returned `CHANGES REQUIRED`; the P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.
+
+# Phase 9 Private Media Security Contract
+
+- Direct upload requires the current authenticated user JWT and an exact database-backed upload intent. Storage RLS permits only a new object at the active account's exact `awaiting_upload` path; overwrite/list/read/delete are not browser capabilities.
+- Completion, retry and gallery mutations require exact same-origin validation and server-derived active account scope. Replays are bound to account, operation, idempotency key and request hash.
+- Originals are untrusted and non-deliverable. A pinned isolated decoder validates magic bytes, full single-frame decode, dimensions and pixel budget, strips metadata and emits new immutable WebP bytes.
+- Anonymous and cross-account known-ID/path access fail closed at both metadata RLS and Storage RLS layers.
+- Ready renditions are proxied by an authorized same-origin route with `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. Signed URLs are not used in Phase 9.
+- The service-role secret is confined to `server-only` capability/worker modules and is forbidden in client props, bundles, URLs, logs and error messages.
+- Cleanup uses provider Storage APIs; direct application SQL mutation of `storage.objects` is forbidden.
+
+The 2026-09-17 Phase 9 security gate passed with clean migration replay, DB lint, 146/146 pgTAP assertions, real Storage API/TUS integration, 65/65 unit assertions and 36/36 Playwright desktop/mobile tests. Anonymous and known-ID User A/User B isolation, exact-origin rejection, duplicate completion, overwrite denial, original-read denial, rendition-write denial, worker lease/retry recovery, delivery cache headers and accessibility all passed. Generated database types were byte-for-byte stable, and repository plus browser-bundle secret scanning found no privileged credential.
+
+Independent review findings around replay/retry state transitions, actual rendition-object verification, cleanup referential ordering, concurrent gallery commands and primary-removal/reorder semantics were corrected before the final gate. The external review outcome is `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 9 on 2026-09-18. Accepted limitations are: hosted Storage and the production worker scheduler were not validated; general antivirus is outside the current allowlisted manual-image scope; and the stable database type generator retains a known nonfatal `MaxListenersExceededWarning`. Production deployment is NOT RUN and Phase 10 is NOT STARTED.

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { MediaGallery } from "@/modules/media/components/media-gallery";
+import { listItemMedia } from "@/modules/media/server/media-queries";
 import { getWardrobeReturnPath } from "@/modules/wardrobe/model";
 import { setWardrobeItemStateAction } from "@/modules/wardrobe/server/wardrobe-actions";
 import { getWardrobeItem } from "@/modules/wardrobe/server/wardrobe-queries";
@@ -20,7 +22,10 @@ export default async function WardrobeItemPage({
   const route = await params;
   if (!z.string().uuid().safeParse(route.itemId).success) notFound();
   const query = await searchParams;
-  const item = await getWardrobeItem(route.itemId);
+  const [item, media] = await Promise.all([
+    getWardrobeItem(route.itemId),
+    listItemMedia(route.itemId),
+  ]);
   if (!item) notFound();
   const returnTo = getWardrobeReturnPath(query.from ?? null);
   const detailPath =
@@ -141,6 +146,13 @@ export default async function WardrobeItemPage({
                 ))}
               </div>
             ) : null}
+
+            <MediaGallery
+              itemId={item.id}
+              itemVersion={item.version}
+              variants={item.variants}
+              initialEntries={media}
+            />
 
             <div className="mt-8 flex flex-wrap gap-3 border-t border-border-subtle pt-5">
               <form action={setWardrobeItemStateAction}>
