@@ -370,6 +370,8 @@ Final Phase 7 status: all listed checks passed, repeat external review approved 
 - The real browser CSRF regression aborts the browser request, replays its captured Server Action payload through the authenticated API cookie jar with `Origin: https://evil.example`, and proves directly from the database that the forged title was not written.
 - User A/User B browser and pgTAP tests cover list isolation, known-ID read denial, privileged mutation denial, non-revealing foreign mutation errors and server-derived ownership. Restricted/deleting-account regressions prove both route and RLS denial.
 
-Local Phase 8 security gate passed with 90/90 pgTAP, 47/47 unit, 32/32 Playwright desktop/mobile, accessibility across empty/grid/filter/new/detail/edit states, secret scanning and no unexpected generated-type drift. Private Storage, uploads/images, Bulk Import, onboarding, Outfit/Wear/Analytics, export/delete execution, AI and Phase 9 remain absent.
+Local Phase 8 security gate passed with 90/90 pgTAP, 51/51 unit, 32/32 Playwright desktop/mobile, accessibility across empty/grid/filter/new/detail/edit states, secret scanning, production build and no unexpected generated-type drift. Private Storage, uploads/images, Bulk Import, onboarding, Outfit/Wear/Analytics, export/delete execution, AI and Phase 9 remain absent.
 
-Independent Phase 8 external security review completed with outcome `CHANGES REQUIRED`; the P1/P2/P3 findings were remediated and locally revalidated. Phase 8 approval is NO. Production deployment is NOT RUN.
+Local WSL development may use canonical HTTP `APP_ORIGIN` only for loopback or RFC1918 IPv4 when both the runtime is non-production and `APP_ENV=local`; the parser rejects public HTTP and every non-HTTP(S) scheme. Production keeps the HTTPS-only policy, and Next development-origin configuration is omitted from production builds.
+
+Independent Phase 8 security review initially returned `CHANGES REQUIRED`; the P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.

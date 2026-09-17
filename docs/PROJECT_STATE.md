@@ -1,11 +1,11 @@
 # AI Wardrobe — Project State
 
 **Дата:** 2026-09-17
-**Статус:** Phase 8 implemented and locally tested / external-review findings remediated / approval NO / production deployment NOT RUN
+**Статус:** Phase 8 approved: YES / production deployment: NOT RUN / Phase 9: next phase, not started
 
 # Current Phase
 
-**Phase 8 — Wardrobe Core — Implemented and locally tested / external-review findings remediated / not approved / not deployed**
+**Phase 8 — Wardrobe Core — Approved / production deployment NOT RUN; Phase 9 is next and not started**
 
 # Completed
 
@@ -26,7 +26,8 @@
 - Migration 12 добавляет service-role-only aggregate commands с optimistic version, atomic typed relations, idempotent create reconciliation и narrow archive/restore audit events.
 - Responsive UI показывает честный no-image placeholder, explicit draft/favorite/archive states, distinct empty/filtered-empty/loading/error/success/failure states, mobile full-height filter sheet, desktop filter rail и keyboard-accessible bounded progressive reveal.
 - Initial independent Phase 8 review завершён с outcome `CHANGES REQUIRED`: P0 отсутствуют; P1/P2/P3 findings по inactive-account access, high-cardinality filters, draft archive, error normalization и accessibility исправлены.
-- Phase 8 local gate после remediation: 12-migration clean replay, DB lint, 90/90 pgTAP, generated types без unexpected drift, 47/47 unit, 32/32 Playwright desktop/mobile, accessibility, hostile-Origin CSRF replay, User A/B isolation и secret scan — PASS.
+- Phase 8 final gate после remediation: 12-migration clean replay, DB lint, 90/90 pgTAP, generated types без unexpected drift, 51/51 unit, 32/32 Playwright desktop/mobile, accessibility, hostile-Origin CSRF replay, User A/B isolation, secret scan и production build — PASS.
+- Local WSL development origin разрешён только как canonical HTTP origin на loopback/RFC1918 адресе при `NODE_ENV != production` и `APP_ENV=local`; production path по-прежнему требует HTTPS.
 - Read-only Source Audit не выполнен: каталог `sources/` и реальный source archive отсутствуют. Данные не выдумывались; Bulk Import, production records и activation contract implementation не создавались.
 
 - Определены product vision, problems, target users, JTBD и core user loop.
@@ -325,7 +326,7 @@ All technical criteria below passed the post-remediation application, database a
 
 # Phase 8 Acceptance Checklist
 
-Technical criteria below passed locally on 2026-09-17. This does not constitute external review or approval.
+Technical criteria below passed locally on 2026-09-17. Independent review findings were remediated, the repeat review passed and Phase 8 is explicitly approved. Production deployment remains a separate incomplete gate.
 
 - [x] Authenticated user can create, reopen and edit committed or incomplete draft ClothingItem records.
 - [x] One physical item remains one ClothingItem; AppearanceVariant rows are sparse label metadata subordinate to that item.
@@ -345,17 +346,17 @@ Technical criteria below passed locally on 2026-09-17. This does not constitute 
 - [x] Restricted/deleting accounts cannot read Wardrobe routes or rows; the shared layout and RLS account resolver both require active account state.
 - [x] Search and relational filters execute through a bounded authenticated `SECURITY INVOKER` RPC; high-cardinality regression proves the result is not silently truncated at 1000 relation rows.
 - [x] Draft items cannot be archived in either UI or database command; foreign/missing IDs share the same non-revealing result class.
-- [x] Clean replay of all 12 migrations, DB lint, 90/90 pgTAP, generated DB types, typecheck, 47/47 unit, 32/32 Playwright desktop/mobile, accessibility and secret scan pass.
+- [x] Clean replay of all 12 migrations, DB lint, 90/90 pgTAP, generated DB types, typecheck, 51/51 unit, 32/32 Playwright desktop/mobile, accessibility, secret scan and production build pass.
 - [x] Source Audit availability was checked read-only; `sources/`/source archive is absent, so no source data or `OUT-10` fixture was invented.
 - [x] Bulk Import, private Storage, images, onboarding, Outfit Builder, Wear, Calendar, Analytics, export/delete execution, AI and Phase 9 were not implemented.
-- [x] Independent external review — COMPLETED, outcome `CHANGES REQUIRED`; all identified findings remediated and locally revalidated.
-- [ ] Phase 8 approved — NO.
+- [x] Independent external review — COMPLETED; initial `CHANGES REQUIRED` findings and the final local-origin/documentation findings were remediated, and repeat review outcome is `APPROVE`.
+- [x] Phase 8 approved — YES.
 - [ ] Production deployment — NOT RUN.
 
 # Next Step
 
-**Commit and Pull Request the remediated Phase 8 branch for human review and explicit approval. Phase 9 has not started.**
+**Close Phase 8 without merge or deployment, then prepare the separate Phase 9 branch and planning scope. Phase 9 implementation has not started.**
 
 # Gate
 
-**Phase 8 is implemented, externally reviewed and remediated, but is NOT explicitly approved and NOT deployed.**
+**Phase 8 is implemented, externally reviewed, remediated and explicitly approved. Production deployment is NOT RUN. Phase 9 is next and not started.**

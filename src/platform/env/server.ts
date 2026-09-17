@@ -14,15 +14,21 @@ const accountBootstrapEnvironmentSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(20),
 });
 
+function getAppEnvironment() {
+  return serverEnvironmentSchema.parse({ APP_ENV: process.env.APP_ENV });
+}
+
 export function getServerEnvironment() {
   return {
     ...getPublicEnvironment(),
-    ...serverEnvironmentSchema.parse({ APP_ENV: process.env.APP_ENV }),
+    ...getAppEnvironment(),
   };
 }
 
 export function getApplicationOrigin(): string {
-  return parseApplicationOrigin(process.env.APP_ORIGIN);
+  const allowPrivateNetworkHttp =
+    process.env.NODE_ENV !== "production" && getAppEnvironment().APP_ENV === "local";
+  return parseApplicationOrigin(process.env.APP_ORIGIN, allowPrivateNetworkHttp);
 }
 
 export function getAccountBootstrapEnvironment() {

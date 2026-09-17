@@ -1,6 +1,6 @@
 # AI Wardrobe — Testing
 
-**Status:** Phase 8 local quality gate passed; external-review findings remediated; approval NO; production deployment NOT RUN.
+**Status:** Phase 8 approved: YES; production deployment: NOT RUN; Phase 9: next phase, not started.
 
 # Testing Principles
 
@@ -78,7 +78,7 @@ Final Phase 7 status: the remediation gate above passed, repeat external review 
 
 Phase 8 adds Wardrobe unit, database and real browser coverage. On 2026-09-17 the following local checks passed:
 
-- formatting, lint, typecheck and 47/47 unit assertions;
+- formatting, lint, typecheck and 51/51 unit assertions, including strict rejection of non-HTTP local/private-origin exceptions;
 - clean replay of all 12 migrations and controlled seed;
 - DB lint with no schema errors;
 - 90/90 pgTAP assertions, including aggregate create/update, reconcile-only create retry, optimistic conflict, category/color rejection, tags, sparse variants, favorite, archive/restore, draft-archive rejection, audit events, privileged-function denial, high-cardinality filter coverage and active-account/User A/B isolation;
@@ -86,4 +86,4 @@ Phase 8 adds Wardrobe unit, database and real browser coverage. On 2026-09-17 th
 - 32/32 Playwright tests across desktop/mobile, including the Phase 8 vertical-slice/isolation/account-state tests, real hostile-Origin replay and expanded Wardrobe accessibility coverage;
 - `pnpm security:secrets` and `git diff --check`.
 
-Independent Phase 8 external review completed with outcome `CHANGES REQUIRED`; no P0 was found, and all P1/P2/P3 findings were remediated and locally revalidated. Phase 8 approval is NO. Production deployment is NOT RUN.
+Independent Phase 8 review initially returned `CHANGES REQUIRED`; no P0 was found, and all P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.

@@ -2348,4 +2348,4 @@ High-cardinality structured filtering is implemented separately as the authentic
 
 ### Status
 
-Implemented in Phase 8. Independent review findings were remediated; explicit Phase 8 approval remains separate.
+Accepted — approved Phase 8 implementation decision. Independent and repeat review findings were remediated; production deployment was not run and Phase 9 remains not started.
