@@ -70,6 +70,26 @@ a {
   color: inherit;
 }
 
+.field {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid var(--aw-border-strong);
+  border-radius: var(--aw-radius-sm);
+  background: var(--aw-surface);
+  padding: 0.7rem 0.8rem;
+  color: var(--aw-text-primary);
+}
+
+.choice {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--aw-border-subtle);
+  border-radius: var(--aw-radius-sm);
+  padding: 0.55rem 0.75rem;
+}
+
 :focus-visible {
   outline: 2px solid var(--aw-focus);
   outline-offset: 2px;

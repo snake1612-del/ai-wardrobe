@@ -1,10 +1,10 @@
 # AI Wardrobe
 
-Private, server-authoritative wardrobe application. This repository currently contains only the Phase 6 project and data foundation; product features begin in later phases.
+Private, server-authoritative wardrobe application. The repository contains the Phase 6 project/data foundation and the narrow Phase 7 authentication/privacy foundation; wardrobe product features remain deferred.
 
 # Current Status
 
-Phase 6 implementation is present. Application checks pass locally. Database migration, generated-type and RLS execution remain a release gate until run in an environment with Docker or Podman; the current workstation has neither. Nothing has been deployed publicly.
+Phase 7 implementation is present and locally validated. It adds SSR cookie sessions, signup/login/logout/recovery/password replacement, trusted idempotent account bootstrap, a protected shell and User A/B isolation checks. External Phase 7 review remains pending; this document does not mark the phase approved or deployed.
 
 # Architecture Summary
 
@@ -30,7 +30,7 @@ The lockfile is authoritative. Do not use npm or Yarn in this repository.
 
 # Environment
 
-Copy `.env.example` to `.env.local` and use values from `pnpm db:start` for local development. Public variables contain only the project URL and publishable key. Never add service-role/admin credentials to a `NEXT_PUBLIC_*` variable.
+Copy `.env.example` to `.env.local` and use values from `pnpm db:start` for local development. Public variables contain only the project URL and publishable key. `SUPABASE_SECRET_KEY` is consumed only by the server-only account-bootstrap capability. Never add service-role/admin credentials to a `NEXT_PUBLIC_*` variable.
 
 - `local`: local Next.js plus local Supabase only.
 - `preview`: isolated preview/staging project with synthetic data; never the production project.
@@ -44,7 +44,7 @@ pnpm db:start
 pnpm dev
 ```
 
-The root page is deliberately a private-product foundation placeholder, not a marketing site. `/dev/ui` is available only outside production for token/primitives inspection. `/api/health` validates configuration without returning secret or database details.
+The root page links to `/auth`; `/app` is a minimal protected shell rather than a wardrobe product screen. `/dev/ui` is available only outside production for token/primitives inspection. `/api/health` validates configuration without returning secret or database details.
 
 # Supabase Local Development
 
@@ -55,11 +55,11 @@ pnpm test:db
 pnpm db:stop
 ```
 
-The CLI uses `supabase/config.toml`. It must target the local container stack; never substitute the production database for development. No Storage bucket is created in Phase 6. Future wardrobe buckets must remain private.
+The CLI uses `supabase/config.toml`. It must target the local container stack; never substitute the production database for development. No Storage bucket is created through Phase 7. Future wardrobe buckets must remain private.
 
 # Database Migrations
 
-Ten ordered migrations under `supabase/migrations` create the approved 31 application tables, indexes, `pg_trgm`, deny-by-default RLS and narrow grants. `pnpm db:reset` proves a fresh database can replay the entire history and controlled `supabase/seed.sql` vocabulary.
+Eleven ordered migrations under `supabase/migrations` create the approved 31 application tables, indexes, `pg_trgm`, deny-by-default RLS, narrow grants and one service-role-only idempotent `bootstrap_account` function. `pnpm db:reset` proves a fresh database can replay the entire history and controlled `supabase/seed.sql` vocabulary.
 
 Create future migrations through the Supabase CLI and commit the SQL. Do not make dashboard-only schema changes.
 
@@ -82,7 +82,7 @@ pnpm test:db
 pnpm test:e2e
 ```
 
-Unit tests cover environment parsing, application errors and log redaction. pgTAP covers schema/search, structural ownership invariants and the RLS/grant matrix. Playwright runs desktop/mobile smoke checks plus axe accessibility checks. See `docs/TESTING.md`.
+Unit tests cover environment parsing, application errors, log redaction, redirect allowlisting, exact-origin checks and scoped client-state cleanup. pgTAP covers schema/search, structural ownership, the RLS/grant matrix and account-bootstrap authority/idempotency. Playwright runs desktop/mobile auth and isolation flows plus axe accessibility checks. See `docs/TESTING.md`.
 
 # Quality Checks
 
@@ -99,7 +99,7 @@ pnpm build
 pnpm start
 ```
 
-The production command uses Next.js's supported webpack build path because the current Turbopack CSS worker requires a loopback port that is unavailable in the constrained local runner; `pnpm dev` keeps the framework default. Production and preview builds require valid public Supabase configuration. Critical server-only secrets will be introduced and validated only with the feature that needs them.
+The production command uses Next.js's supported webpack build path because the current Turbopack CSS worker requires a loopback port that is unavailable in the constrained local runner; `pnpm dev` keeps the framework default. Production and preview builds require valid public Supabase configuration plus the server-only bootstrap key. `pnpm test:e2e` derives local credentials without printing them and rebuilds before starting the browser server.
 
 # Project Structure
 
@@ -129,8 +129,8 @@ docs/                    Approved product/design/architecture records
 
 # What Is Not Implemented Yet
 
-No signup/login UI, onboarding, wardrobe CRUD, media upload/processing, Bulk Import parser/UI, Outfit Builder, wear tracking, Calendar/Insights, AI, weather, billing, Household sharing, analytics tracking, service worker/offline sync, production jobs, remote infrastructure or deployment exists.
+No onboarding, wardrobe CRUD, media upload/processing, Bulk Import parser/UI, Outfit Builder, wear tracking, Calendar/Insights, export/delete workflow, AI, weather, billing, Household sharing, analytics tracking, service worker/offline sync, production jobs, remote infrastructure or deployment exists.
 
 # Next Phase
 
-Phase 7 — Authentication & Privacy. Do not start it until Phase 6 database/RLS execution has passed and Phase 6 receives external approval.
+Phase 7 — Authentication & Privacy is implemented and locally tested. Do not start a broader product phase until the external Phase 7 review is complete.

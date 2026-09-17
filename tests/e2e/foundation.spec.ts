@@ -9,7 +9,11 @@ test("foundation shell renders without accessibility violations", async ({ page 
 
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "AI Wardrobe" })).toBeVisible();
-  await expect(page.getByText("Phase 6 — Project Foundation")).toBeVisible();
+  await expect(page.getByText("Phase 7 — Auth Foundation")).toBeVisible();
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/icon.svg");
+
+  const icon = await page.request.get("/icon.svg");
+  expect(icon.ok()).toBeTruthy();
 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);

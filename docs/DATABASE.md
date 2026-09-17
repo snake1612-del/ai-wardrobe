@@ -1,10 +1,10 @@
 # AI Wardrobe — Database / Data Model
 
-**Phase:** 5 — Database / Data Model  
-**Status:** Approved / Complete  
+**Phase:** 5 approved data model with Phase 6–8 implementation appendices
+**Status:** Phase 8 local database gate passed; external-review findings remediated
 **Baseline:** Approved PRD, UX, Design System, Architecture, Security and Decisions D-001–D-088  
-**Date:** 2026-09-15  
-**Artifact type:** design specification; no SQL or migration has been applied
+**Date:** 2026-09-17
+**Artifact type:** approved design specification plus local migration representation
 
 # Executive Data Model Summary
 
@@ -1431,4 +1431,35 @@ The migration inventory contains exactly 31 `public` application tables and no `
 
 Minimum committed Outfit composition, exact-one-default when variants exist, timezone/date correspondence, media replacement cycle detection, sealed Import commit and reviewed hard-delete preparation remain transaction/application invariants exactly as designed; they are not weakened into misleading row checks.
 
-Executable tests cover the 31-table inventory, absence of `source_version`, Russian/English/typo/short search fixtures, composite ownership, variant-to-item compatibility, duplicate Outfit/Wear physical identities, same-day separate WearEvents, scoped external identities, same-account media replacement, rendition uniqueness and RLS/grants. Migration replay and those DB tests have not yet run on this workstation because Docker/Podman is unavailable; this remains a Phase 6 approval gate.
+Executable tests cover the 31-table inventory, absence of `source_version`, Russian/English/typo/short search fixtures, composite ownership, variant-to-item compatibility, duplicate Outfit/Wear physical identities, same-day separate WearEvents, scoped external identities, same-account media replacement, rendition uniqueness and RLS/grants. On 2026-09-15 a clean local replay applied all ten migrations and seed; DB lint passed, all 37 pgTAP assertions passed, and regenerated types produced no Git diff. External Phase 6 review remains the approval gate.
+
+# Phase 7 Account Bootstrap Migration
+
+Migration 11, `auth_account_bootstrap`, adds no table and does not broaden ordinary Data API access. It adds one `SECURITY DEFINER` function with an empty search path:
+
+`bootstrap_account(p_auth_user_id uuid, p_account_id uuid) → (account_id, account_state)`
+
+Execution is revoked from `public`, `anon` and `authenticated` and granted only to `service_role`. The trusted server supplies both the already-verified Auth subject and a server-generated UUID. `accounts.auth_user_id` remains the race/retry authority: a conflicting retry resolves the existing account rather than accepting a new owner or creating a duplicate. `account_preferences` is inserted by primary-key conflict-safe logic.
+
+The pgTAP contract verifies first creation, retry with a different proposed UUID, exactly one account/preferences row, independent second identity and denial under the real authenticated role. The broader RLS suite also proves that User A full-text search cannot discover User B and that jobs/export/deletion tables have no authenticated SELECT grant. Generated TypeScript types include only the new RPC signature as the expected schema diff.
+
+Phase 7 does not add automatic `auth.users` triggers, browser account mutations, Household ownership or product rows. Repeat external review approved commit `544c089`, and Phase 7 was explicitly approved in commit `52cc4cb`; production deployment was not run.
+
+# Phase 8 Wardrobe Core Commands
+
+Migration 12, `wardrobe_core_commands`, adds no table, column or broad Data API grant. It realizes the D-091 split with two capability-specific `SECURITY DEFINER` functions whose search path is empty:
+
+- `save_wardrobe_item(...) → (item_id, item_version)` atomically creates or optimistic-version-updates one ClothingItem aggregate, controlled color/season joins, owner-scoped tags and sparse AppearanceVariant labels;
+- `set_wardrobe_item_state(account, item, expected_version, action)` performs favorite/unfavorite/archive/restore and records narrow archive/restore audit events.
+
+`public`, `anon` and `authenticated` cannot execute either function; only `service_role` can. The server verifies the Auth subject, resolves its durable account and exact Origin, validates the typed payload and only then supplies `account_id`. Browser input cannot select ownership. Reads continue through the publishable user-context client and forced RLS.
+
+Create uses a server-generated item UUID and `expected_version = 0`. A retry that finds the same version-1 item for the same account returns its identity without rewriting scalar or child state; a foreign/colliding identity fails. Existing-item edits require the exact version, operate only on active rows and increment the aggregate version once. Category/color/season references are rechecked in PostgreSQL, tags remain account-scoped and archive never deletes the item.
+
+The existing owner-scoped search document and indexes are reused by `search_wardrobe_item_ids`, a `SECURITY INVOKER` function with an empty search path and authenticated-only execution. Search and relational color/season/tag filters execute in one RLS-protected database query, avoiding PostgREST relation-list truncation. The grid initially requests 24 rows and its accessible `Показать ещё` fallback increases only the bounded server request; a 960-row safety cap keeps both the ID lookup and aggregate fetch below the configured 1000-row API ceiling and requires narrower filters beyond that point. Keyset pagination and representative performance validation remain a pre-beta scale gate.
+
+On 2026-09-17 a clean local reset replayed all 12 migrations, DB lint passed, 90/90 pgTAP assertions passed and regenerated TypeScript types contained only the expected two command RPCs plus the RLS-protected search RPC. No unexpected schema/type drift was found.
+
+The required Source Audit could not inspect real records because `sources/` and a source archive are absent from the checkout. No source identifiers, images, `OUT-10` mapping or production ClothingItem fixture was invented. Bulk Import remains unimplemented and blocked on that input.
+
+Independent Phase 8 review initially returned `CHANGES REQUIRED`: no P0 findings, one P1, two P2 and two P3 findings. The active-account guard, bounded relational search, draft-archive contract, cross-account error normalization and broader accessibility coverage were remediated and revalidated. The final repeat review outcome is `APPROVE`, Phase 8 is explicitly approved, production deployment was not run and Phase 9 is next/not started.

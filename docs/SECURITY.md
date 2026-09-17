@@ -1,9 +1,9 @@
 # AI Wardrobe — Security Architecture
 
-**Phase:** 4 — Technical Architecture  
-**Status:** Approved / Complete  
+**Phase:** 4 approved security architecture with Phase 6–8 implementation appendices
+**Status:** Phase 8 local security gate passed; external-review findings remediated
 **Baseline:** Approved PRD, UX, Design System and Decisions D-001–D-075  
-**Date:** 2026-09-15
+**Date:** 2026-09-17
 
 # Security Principles
 
@@ -339,4 +339,39 @@ Phase 4 security review result: the approved architecture has no intended browse
 - Structured logging accepts scalar context only and removes token/cookie/secret/password/signed URL/note/payload/photo/image-shaped keys. Raw database errors remain inside the server error mapping boundary.
 - No Storage bucket or public object policy is created. Direct upload, object-key layout and delivery TTL remain explicit later gates.
 
-Security checks are `pnpm test`, `pnpm test:db` and `pnpm test:e2e`. The pgTAP matrix uses actual synthetic authenticated role/JWT context and verifies known-ID isolation plus absence of direct mutation grants. Local DB execution is pending Docker/Podman and must pass before Phase 6 approval.
+Security checks are `pnpm test`, `pnpm test:db` and `pnpm test:e2e`. The pgTAP matrix uses actual synthetic authenticated role/JWT context and verifies known-ID isolation plus absence of direct mutation grants. On 2026-09-15 the local clean replay, DB lint, all 37 pgTAP assertions and the 6-test browser/axe suite passed; external Phase 6 review remains required before approval.
+
+# Phase 7 Security Implementation
+
+- Auth sessions use Supabase SSR cookies. The request proxy calls `auth.getUser()` to refresh/verify state, propagates rotated cookies and rejects anonymous access before protected routes execute.
+- PKCE authorization codes are exchanged only in `/auth/callback`; token-hash email links are verified only in `/auth/confirm`. Both routes use required server-only `APP_ORIGIN`, restrict destinations to a small local path allowlist, explicitly attach new cookies to the redirect response and mark responses private/no-store.
+- Login uses a generic credential error. Recovery always reports the same success message for known and unknown email addresses, reducing account enumeration.
+- Server Actions validate email/password shape and require exact equality with canonical `APP_ORIGIN`, Host and forwarded protocol. Missing protocol, header lists and mismatches fail closed; SameSite cookies remain defense in depth.
+- The only privileged Phase 7 capability is `bootstrap_account`. Its key is read by a `server-only` module, the client disables session persistence/URL detection, and the PostgreSQL function is executable only by `service_role`.
+- Bootstrap receives a subject only after server-side `auth.getUser()`, chooses its own UUID, uses the unique Auth binding for retry reconciliation and creates preferences idempotently. It cannot be invoked by `anon` or `authenticated`.
+- `/api/account` accepts no account selector. It derives the owner from the verified session/RLS context and returns only the current account ID and email with `private, no-store`.
+- The protected shell is dynamic and contains no wardrobe data surface. Invalid session material yields a redirect/401 without a private identifier.
+- Logout uses local provider scope and clears only the application's `ai-wardrobe:*` local/session keys. A persistent owner marker makes missing/mismatched ownership fail safe, and protected client content waits for binding before display.
+- Existing database tests cover known-ID/FTS User A/B isolation and operational grants. The expanded browser suite covers real PKCE recovery, refresh rotation, expired/revoked sessions, same-profile switching, hostile Origin and cache headers.
+- The secret scanner covers Markdown/CSS and application/config sources for legacy service-role/JWT shapes plus modern `SUPABASE_SECRET_KEY` assignments and `sb_secret_` markers, with synthetic regression fixtures and an explicit safe `.env.example` placeholder.
+
+Final Phase 7 status: all listed checks passed, repeat external review approved commit `544c089`, and the user explicitly approved Phase 7 in commit `52cc4cb`. Production deployment was not run. Storage, onboarding, export/delete execution, MFA/social providers and production email remained outside Phase 7.
+
+# Phase 8 Security Implementation
+
+- Wardrobe routes remain below protected `/app`; request proxy verification and `Cache-Control: private, no-store` apply to HTML/RSC responses.
+- Every read uses the server-created publishable user-context client, so forced RLS derives an active account from `auth.uid()`. Restricted/deleting accounts resolve no rows, known foreign item IDs return no row and search/filter relation queries remain owner-scoped.
+- Browser roles keep SELECT-only ordinary-domain grants and cannot execute either migration-12 command. There is no browser import of `SUPABASE_SECRET_KEY` or generic service-role database client.
+- Each mutation first requires exact canonical Origin/Host/protocol and a verified ready account context. Client `account_id`, `user_id` and `owner_id` are neither accepted nor trusted.
+- The server-only capability client invokes only `save_wardrobe_item` or `set_wardrobe_item_state`. Both functions have an empty search path, validate scope/state/version/reference data and are executable only by `service_role`. The separate bounded `search_wardrobe_item_ids` function is `SECURITY INVOKER`, uses an empty search path and remains subject to authenticated RLS.
+- Aggregate create/edit is atomic. Same-ID create retry reconciles without rewrite; stale version, foreign identity, invalid category/color/season and direct authenticated invocation fail closed.
+- Archive changes lifecycle/timestamp and emits a narrow audit event; it does not delete ClothingItem or its history. The visible Undo submits a normal version-checked restore against the same server-derived account scope.
+- Application responses expose localized safe failures. Structured logs record only stable event names and database error codes, never notes, tags, tokens, cookies, SQL text or service credentials.
+- The real browser CSRF regression aborts the browser request, replays its captured Server Action payload through the authenticated API cookie jar with `Origin: https://evil.example`, and proves directly from the database that the forged title was not written.
+- User A/User B browser and pgTAP tests cover list isolation, known-ID read denial, privileged mutation denial, non-revealing foreign mutation errors and server-derived ownership. Restricted/deleting-account regressions prove both route and RLS denial.
+
+Local Phase 8 security gate passed with 90/90 pgTAP, 51/51 unit, 32/32 Playwright desktop/mobile, accessibility across empty/grid/filter/new/detail/edit states, secret scanning, production build and no unexpected generated-type drift. Private Storage, uploads/images, Bulk Import, onboarding, Outfit/Wear/Analytics, export/delete execution, AI and Phase 9 remain absent.
+
+Local WSL development may use canonical HTTP `APP_ORIGIN` only for loopback or RFC1918 IPv4 when both the runtime is non-production and `APP_ENV=local`; the parser rejects public HTTP and every non-HTTP(S) scheme. Production keeps the HTTPS-only policy, and Next development-origin configuration is omitted from production builds.
+
+Independent Phase 8 security review initially returned `CHANGES REQUIRED`; the P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.

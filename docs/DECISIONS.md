@@ -2295,3 +2295,57 @@ Reference codes remain stable and Russian labels are presentation values. Produc
 ### Status
 
 Recommended — pending Phase 6 approval.
+
+## D-096 — Cookie mutations require exact same-origin validation and bootstrap stays capability-specific
+
+### Decision
+
+For Phase 7 password/session Server Actions, require an exact `Origin` match against the effective host and forwarded protocol in addition to Supabase cookie defaults. Treat SameSite as defense in depth. PKCE/OTP callback GETs are authorized by one-time provider material and allowlisted local redirect destinations. Keep account creation behind one server-only, service-role-only `bootstrap_account` capability invoked only after `auth.getUser()` verifies the subject.
+
+### Why
+
+Cookie authentication alone does not prove that a mutation was intentionally initiated by this origin. Conversely, a broad privileged database client would erase the useful RLS/grant boundary. Exact origin validation addresses the implemented browser mutation surface, while a narrow idempotent function provides the minimum authority needed to reconcile Auth identity with the durable account.
+
+### Alternatives considered
+
+- Rely only on SameSite/framework defaults.
+- Add a separate synchronizer token to the current Server Action forms.
+- Create accounts with an `auth.users` trigger.
+- Expose account INSERT or a broad service-role repository to ordinary application code.
+
+### Consequences
+
+Deployments must preserve trustworthy host/protocol headers and test the configured proxy chain. Non-browser clients do not receive a cookie mutation API in this phase. Any future cross-origin surface must define its own explicit anti-CSRF/authentication contract. The bootstrap secret remains server-only, the function chooses/reconciles server-controlled identity data, and every new privileged operation requires a separate capability and review.
+
+External-review remediation uses required server-only `APP_ORIGIN` as the canonical Auth redirect and mutation origin. Incoming Host and forwarded protocol are consistency checks only: missing protocol, lists and mismatches fail closed, and forwarded host never constructs a redirect destination.
+
+### Status
+
+Accepted — approved Phase 7 implementation decision.
+
+## D-097 — Wardrobe writes use capability-specific RPCs while reads retain user-context RLS
+
+### Decision
+
+Implement the first invariant-heavy Wardrobe aggregate writes as two narrow server-only PostgreSQL capabilities: `save_wardrobe_item` and `set_wardrobe_item_state`. The application verifies the Auth subject, derives the durable account, enforces exact-origin request intent and validates the payload before a service-role client invokes either function. Keep ordinary reads on the publishable user-context client under forced RLS. Do not expose direct browser mutation grants or a generic privileged repository.
+
+### Why
+
+D-091 intentionally deferred the exact command transport until the first real aggregate. ClothingItem save spans the root, controlled joins, owner-scoped tags and sparse AppearanceVariants and must be atomic. A reviewed function gives that transaction one bounded authority while preserving RLS as an independent read/isolation layer and keeping ownership outside browser control.
+
+### Alternatives considered
+
+- Direct authenticated PostgREST inserts/updates across aggregate tables.
+- A broad service-role repository callable by arbitrary application modules.
+- A pooled SQL adapter before the project has another transaction shape that justifies it.
+- Client-side compensation across multiple independent writes.
+
+### Consequences
+
+Each new privileged command still requires its own schema, grants, server authorization, idempotency/concurrency behavior and negative tests; D-097 is not permission to bypass RLS generically. Functions use an empty search path and are revoked from `public`, `anon` and `authenticated`. The service credential stays in `server-only` code. Reads and known-ID denial continue to be proven with real authenticated RLS context. A future pooled adapter may coexist if it preserves the same capability boundary.
+
+High-cardinality structured filtering is implemented separately as the authenticated-only `SECURITY INVOKER` function `search_wardrobe_item_ids`. It keeps user identity and ownership under RLS, performs relational filters in PostgreSQL and caps results below the Data API row ceiling; it is not a privileged write capability.
+
+### Status
+
+Accepted — approved Phase 8 implementation decision. Independent and repeat review findings were remediated; production deployment was not run and Phase 9 remains not started.

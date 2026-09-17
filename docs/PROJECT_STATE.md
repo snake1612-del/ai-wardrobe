@@ -1,13 +1,34 @@
 # AI Wardrobe — Project State
 
-**Дата:** 2026-09-15  
-**Статус:** Phase 6 implementation complete / database validation blocked
+**Дата:** 2026-09-17
+**Статус:** Phase 8 approved: YES / production deployment: NOT RUN / Phase 9: next phase, not started
 
 # Current Phase
 
-**Phase 6 — Project Foundation — In Progress / DB validation blocked**
+**Phase 8 — Wardrobe Core — Approved / production deployment NOT RUN; Phase 9 is next and not started**
 
 # Completed
+
+- Реализованы signup, login, local logout, generic password recovery и authenticated password replacement поверх Supabase Auth.
+- Реализованы SSR cookie refresh, PKCE code callback и token-hash email confirmation routes с allowlisted redirects и явной передачей cookies в redirect response.
+- Добавлен idempotent service-role-only `bootstrap_account`, создающий ровно один durable account и preferences после server-side `auth.getUser()`.
+- Добавлены minimal protected `/app` shell и `/api/account`; account scope всегда выводится из verified identity, а client-provided `account_id` игнорируется.
+- Authenticated HTML/API responses помечаются `private, no-store`; persistent owner marker закрывает перенос `ai-wardrobe:*` state между аккаунтами, а protected client content скрыт до owner binding.
+- Обязательный server-only `APP_ORIGIN` задаёт Auth redirects и exact-origin CSRF contract; отсутствующий protocol и несовпадающие/spoofed host/protocol значения отклоняются.
+- Unit suite расширен до 36 проверок; secret scanner распознаёт modern `SUPABASE_SECRET_KEY`, сканирует Markdown/CSS и выполняет synthetic regression fixtures.
+- Browser suite расширен для real Mailpit→PKCE recovery, refresh rotation, expired session, same-profile account switch, hostile Server Action Origin и protected HTML headers.
+- Post-remediation quality gate пройден: clean replay всех 11 миграций, DB lint, 51/51 pgTAP, database type generation без schema/type drift, typecheck, 26/26 Playwright desktop/mobile, accessibility и secret scan — PASS.
+- Initial external Phase 7 review завершён с outcome `CHANGES REQUIRED` без P0/P1; документационный P2 и оба P3 исправлены. Repeat external review commit `544c089` завершён с outcome `APPROVE`, после чего пользователь явно утвердил Phase 7. Production deployment не запускался.
+- Реализован первый non-AI Wardrobe vertical slice: create/read/edit draft и committed ClothingItem, favorite/unfavorite, archive/restore с immediate Undo, detail и responsive grid с bounded progressive `Показать ещё`.
+- Добавлены deterministic server-side search и structured filters по category/subcategory reference, color, season, purpose/style/custom tag, lifecycle и favorite; URL state сохраняется через detail/edit.
+- Реализована sparse AppearanceVariant metadata model: обычная вещь не получает variant row, а reversible item остаётся одной physical ClothingItem.
+- Mutation scope выводится только из verified server account context; browser не выбирает account/user/owner. Reads выполняются user-context client под forced RLS.
+- Migration 12 добавляет service-role-only aggregate commands с optimistic version, atomic typed relations, idempotent create reconciliation и narrow archive/restore audit events.
+- Responsive UI показывает честный no-image placeholder, explicit draft/favorite/archive states, distinct empty/filtered-empty/loading/error/success/failure states, mobile full-height filter sheet, desktop filter rail и keyboard-accessible bounded progressive reveal.
+- Initial independent Phase 8 review завершён с outcome `CHANGES REQUIRED`: P0 отсутствуют; P1/P2/P3 findings по inactive-account access, high-cardinality filters, draft archive, error normalization и accessibility исправлены.
+- Phase 8 final gate после remediation: 12-migration clean replay, DB lint, 90/90 pgTAP, generated types без unexpected drift, 51/51 unit, 32/32 Playwright desktop/mobile, accessibility, hostile-Origin CSRF replay, User A/B isolation, secret scan и production build — PASS.
+- Local WSL development origin разрешён только как canonical HTTP origin на loopback/RFC1918 адресе при `NODE_ENV != production` и `APP_ENV=local`; production path по-прежнему требует HTTPS.
+- Read-only Source Audit не выполнен: каталог `sources/` и реальный source archive отсутствуют. Данные не выдумывались; Bulk Import, production records и activation contract implementation не создавались.
 
 - Определены product vision, problems, target users, JTBD и core user loop.
 - Описаны 19 ключевых journeys: onboarding, bulk import, manual/AI-assisted add, search, outfit creation/save/reuse, wear tracking, calendar, analytics, wishlist, declutter, packing, AI styling, weather recommendation, purchase checking, gap analysis и AI packing.
@@ -84,7 +105,7 @@
 - Созданы pgTAP database/RLS tests, Vitest unit tests, Playwright desktop/mobile smoke tests и axe accessibility checks.
 - Созданы CI foundation, `README.md` и `docs/TESTING.md`; актуальные implementation decisions добавлены как D-089–D-095 со статусом pending Phase 6 review.
 - Локально фактически пройдены frozen install, formatting, lint, typecheck, unit tests, production build и browser/accessibility smoke.
-- Local Supabase migration replay, DB/RLS tests и Supabase-generated DB types не выполнены: на машине нет Docker/Podman. Эти три проверки остаются обязательным Phase 6 release gate, а не считаются PASS.
+- Локально фактически пройдены clean Supabase reset всех 10 миграций с seed, DB lint, 37 pgTAP schema/constraint/RLS tests и повторная генерация Supabase TypeScript types без Git diff; предупреждение `MaxListenersExceededWarning` не повлияло на код завершения или generated output.
 
 # Approved Product Decisions
 
@@ -161,14 +182,13 @@
 
 # Not Implemented
 
-**Product features не реализованы; создан только foundation.**
+**Phase 8 Wardrobe Core реализован; перечисленные ниже более поздние product capabilities остаются вне scope.**
 
-- SQL migrations и RLS/grants созданы, но ещё не применены к фактической базе из-за отсутствия Docker/Podman; remote Supabase project не создавался.
-- Сгенерированные из запущенной базы TypeScript types пока не зафиксированы: текущий bootstrap placeholder должен быть заменён командой `pnpm db:types` после успешного migration replay.
-- Auth implementation и рабочие signup/login/session flows не создавались.
+- Remote Supabase project не создавался; migrations и RLS/grants проверены только в локальном development stack.
+- Social/OAuth providers, MFA, onboarding/profile collection и production email delivery не реализованы.
 - Queue/job implementation, workers и schedules не создавались.
 - AI prompts, tool schemas, provider calls и model implementation не создавались.
-- Wardrobe UI/CRUD, onboarding, image upload/processing, Bulk Import, Outfit Builder, Wear, Calendar и Insights не реализованы.
+- Onboarding, image upload/processing, Bulk Import, Outfit Builder, Wear, Calendar и Insights не реализованы. Wardrobe UI/CRUD реализован только в утверждённом Phase 8 scope.
 - Product high-fidelity screens и interactive prototype не реализованы; foundation shell не является продуктовым экраном.
 - Storage buckets/policies, image/import pipelines, full PWA service worker/offline behavior и integrations не реализованы.
 - Supabase/Vercel/OpenAI projects, buckets, queues, environments, credentials и deployment не создавались.
@@ -190,6 +210,7 @@
 - AI cost/latency может превысить utility.
 - Cross-user data leak имеет критическое влияние даже при низкой вероятности.
 - Feature creep со стороны wishlist, packing, AI и visualizations может сорвать core MVP.
+- Bounded progressive Wardrobe reveal ограничен 960 результатами ниже Data API row ceiling; до beta для больших каталогов требуется keyset pagination и representative performance validation.
 - Неопределённая hard-delete/backup policy может конфликтовать с portability/privacy promise.
 
 # Required Before Final Bulk Import UX
@@ -267,18 +288,75 @@ Open Questions предыдущих фаз сохранены выше; их н�
 
 # Phase 6 Open Implementation Questions
 
-1. Выполнить clean Supabase reset, DB lint, pgTAP и type generation в Docker/Podman-capable environment; без этого Phase 6 не закрывается.
+1. Повторить clean Supabase reset, DB lint, pgTAP и type generation в CI и получить обязательный внешний Phase 6 review; локальный gate пройден 2026-09-15.
 2. Какой exact pooled PostgreSQL driver/transaction adapter будет использован первым invariant-heavy command, не меняя D-091.
 3. Когда official Next lint stack объявит ESLint 10 compatibility и позволит снять временный ESLint 9 gate.
 4. Production Supabase/Vercel region, backup/deletion SLA, private upload/delivery model, job/image runner и target browser/PWA matrix остаются release/feature gates.
 5. Search ranking/trigram thresholds и reference vocabulary требуют representative synthetic/approved data; реальные import fixtures требуют обязательный Source Audit.
 
-# Next Phase
+# Phase 7 Acceptance Checklist
 
-**Phase 7 — Authentication & Privacy (not started)**
+All technical criteria below passed the post-remediation application, database and desktop/mobile browser gates. The initial external-review findings were remediated, repeat external review approved commit `544c089`, and the user explicitly approved Phase 7. Production deployment remains a separate, incomplete gate.
 
-Phase 7 не начинается автоматически. Сначала Phase 6 database job должен в Docker/Podman-capable environment успешно выполнить clean migration replay, DB lint, pgTAP RLS/constraint tests и Supabase type generation; затем требуется внешнее Phase 6 review. Обязательный Bulk Import Source Audit остаётся downstream gate для финального import contract/UX.
+- [x] Signup and password login use provider Auth without creating a browser-authorized account write path.
+- [x] Login failures do not disclose whether an email exists.
+- [x] Password recovery returns the same success message for known and unknown addresses.
+- [x] Recovery token exchange and password replacement require a verified server-side session.
+- [x] PKCE callback consumes the code server-side and removes it from the destination URL.
+- [x] Callback/recovery redirects allow only `/app`, `/app/*` and `/auth/update-password`.
+- [x] Session refresh is performed in the request proxy with cookie propagation.
+- [x] Missing, malformed and expired session material cannot open `/app` or `/api/account`.
+- [x] Protected HTML/API responses use `Cache-Control: private, no-store`.
+- [x] Cookie-backed Server Action mutations require an exact same-origin `Origin`/host/protocol match.
+- [x] Account bootstrap runs only after `auth.getUser()` verifies the subject.
+- [x] Bootstrap is idempotent and race-safe on unique `accounts.auth_user_id`.
+- [x] Bootstrap creates account preferences and returns the existing durable account on retry.
+- [x] `anon` and `authenticated` cannot execute the bootstrap function; only `service_role` can.
+- [x] Account API derives scope from verified identity and ignores client account identifiers.
+- [x] User A cannot read User B account/item/search rows under RLS.
+- [x] Operational export/deletion/job tables remain outside ordinary authenticated grants.
+- [x] Logout clears the local Auth session and `ai-wardrobe:*` local/session state.
+- [x] Account switching clears user-scoped browser state before binding the next subject.
+- [x] Desktop and mobile browser flows pass automated accessibility checks.
+- [x] No onboarding, wardrobe CRUD, Storage, export/delete workflow or unrelated product scope was added.
+- [x] Initial external Phase 7 review completed with outcome `CHANGES REQUIRED` and no P0/P1 findings.
+- [x] Repeat external review approved commit `544c089`.
+- [x] Phase 7 approved by explicit user decision.
+- [ ] Production deployment — NOT RUN.
+
+# Phase 8 Acceptance Checklist
+
+Technical criteria below passed locally on 2026-09-17. Independent review findings were remediated, the repeat review passed and Phase 8 is explicitly approved. Production deployment remains a separate incomplete gate.
+
+- [x] Authenticated user can create, reopen and edit committed or incomplete draft ClothingItem records.
+- [x] One physical item remains one ClothingItem; AppearanceVariant rows are sparse label metadata subordinate to that item.
+- [x] Favorite/unfavorite and archive/restore are optimistic-versioned; archive never deletes the row, exposes immediate Undo and restore reuses the same ID.
+- [x] Category IDs and controlled color/season IDs are revalidated by the server command; hierarchy remains the single category reference plus its controlled parent.
+- [x] Purpose/style/custom tags are owner-scoped, deduplicated on active normalized identity and filterable without cross-account reuse.
+- [x] Deterministic server-side search and filters cover category, color, season, tag, lifecycle and favorite; active items are the default.
+- [x] Search/filter state is private-bookmarkable and preserved through Item detail, favorite and edit/save/cancel paths.
+- [x] Wardrobe grid is responsive and accessible, with explicit draft/favorite/archive states, honest no-image placeholders and bounded keyboard-accessible progressive reveal.
+- [x] Empty, filtered-empty, loading, success, validation/conflict failure and route error states are implemented.
+- [x] Reads use verified user context plus forced RLS; service-role mutation commands receive only a server-derived account ID.
+- [x] `anon` and `authenticated` cannot execute wardrobe mutation functions or directly mutate domain tables.
+- [x] Known foreign UUID read and mutation attempts fail; automated User A/User B browser and pgTAP isolation pass.
+- [x] Cookie-backed mutations retain exact-origin protection; a real hostile-Origin Server Action replay does not change the database.
+- [x] Protected Wardrobe HTML/RSC remains behind `/app` auth enforcement and `Cache-Control: private, no-store`.
+- [x] Create retry with the same server-generated item ID reconciles without duplicating or rewriting the aggregate.
+- [x] Restricted/deleting accounts cannot read Wardrobe routes or rows; the shared layout and RLS account resolver both require active account state.
+- [x] Search and relational filters execute through a bounded authenticated `SECURITY INVOKER` RPC; high-cardinality regression proves the result is not silently truncated at 1000 relation rows.
+- [x] Draft items cannot be archived in either UI or database command; foreign/missing IDs share the same non-revealing result class.
+- [x] Clean replay of all 12 migrations, DB lint, 90/90 pgTAP, generated DB types, typecheck, 51/51 unit, 32/32 Playwright desktop/mobile, accessibility, secret scan and production build pass.
+- [x] Source Audit availability was checked read-only; `sources/`/source archive is absent, so no source data or `OUT-10` fixture was invented.
+- [x] Bulk Import, private Storage, images, onboarding, Outfit Builder, Wear, Calendar, Analytics, export/delete execution, AI and Phase 9 were not implemented.
+- [x] Independent external review — COMPLETED; initial `CHANGES REQUIRED` findings and the final local-origin/documentation findings were remediated, and repeat review outcome is `APPROVE`.
+- [x] Phase 8 approved — YES.
+- [ ] Production deployment — NOT RUN.
+
+# Next Step
+
+**Close Phase 8 without merge or deployment, then prepare the separate Phase 9 branch and planning scope. Phase 9 implementation has not started.**
 
 # Gate
 
-**Phase 6 implementation создана, но Phase 6 нельзя закрыть до фактического PASS database migration/RLS/type-generation gate.**
+**Phase 8 is implemented, externally reviewed, remediated and explicitly approved. Production deployment is NOT RUN. Phase 9 is next and not started.**

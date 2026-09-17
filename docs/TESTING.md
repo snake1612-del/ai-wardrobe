@@ -1,6 +1,6 @@
 # AI Wardrobe — Testing
 
-**Status:** Phase 6 foundation; database execution pending a Docker/Podman-capable environment.
+**Status:** Phase 8 approved: YES; production deployment: NOT RUN; Phase 9: next phase, not started.
 
 # Testing Principles
 
@@ -15,22 +15,22 @@ Tests prove server and database boundaries, not the visibility of a UI control. 
 
 # Unit Tests
 
-Vitest executes `tests/unit`. Current useful coverage includes public environment validation, stable application error codes/status mapping and structured-log redaction. Run `pnpm test`.
+Vitest executes `tests/unit`. Coverage includes environment validation, stable application errors, structured-log redaction, safe auth and Wardrobe return-path allowlisting, canonical exact-origin validation, persistent owner-bound browser-state cleanup, ClothingItem validation and sparse comma-separated metadata normalization. Run `pnpm test`.
 
 # Database Integration Tests
 
-pgTAP SQL under `supabase/tests/database` executes against the local migrated Supabase database. It verifies the 31-table inventory, UUID foundation, `pg_trgm`, same-row search, composite ownership, AppearanceVariant compatibility, Outfit physical-item uniqueness, Wear snapshot uniqueness, same-day distinct events, scoped external IDs, media replacement ownership and rendition uniqueness.
+pgTAP SQL under `supabase/tests/database` executes against the local migrated Supabase database. It verifies the 31-table inventory, UUID foundation, `pg_trgm`, search, composite ownership, AppearanceVariant compatibility, Outfit/Wear uniqueness, scoped external IDs, media ownership, RLS/grants, account-bootstrap idempotency and Phase 8 wardrobe aggregate commands.
 
 Run `pnpm db:start`, `pnpm db:reset`, then `pnpm test:db`.
 
 # RLS / Authorization Matrix
 
-| Actor                      | Read own ordinary domain row |    Read other known ID |   Direct domain mutation |         Operational tables |
-| -------------------------- | ---------------------------: | ---------------------: | -----------------------: | -------------------------: |
-| Anonymous                  |                         Deny |                   Deny |                     Deny |                       Deny |
-| Authenticated User A       |          Allow where granted |                   Deny |          Deny in Phase 6 |                       Deny |
-| Authenticated User B       |          Allow where granted |                   Deny |          Deny in Phase 6 |                       Deny |
-| Trusted application/worker |        Explicit command only | Explicitly scoped only | Command/transaction only | Narrow workflow capability |
+| Actor                      | Read own ordinary domain row |    Read other known ID |           Direct domain mutation |         Operational tables |
+| -------------------------- | ---------------------------: | ---------------------: | -------------------------------: | -------------------------: |
+| Anonymous                  |                         Deny |                   Deny |                             Deny |                       Deny |
+| Authenticated User A       |          Allow where granted |                   Deny | Deny direct; server command only |                       Deny |
+| Authenticated User B       |          Allow where granted |                   Deny | Deny direct; server command only |                       Deny |
+| Trusted application/worker |        Explicit command only | Explicitly scoped only |         Command/transaction only | Narrow workflow capability |
 
 The test changes to the real `authenticated` role and supplies a synthetic JWT subject; it does not use service-role credentials while pretending to be a user. Grant assertions cover SELECT/INSERT/UPDATE/DELETE capability boundaries.
 
@@ -39,22 +39,22 @@ The test changes to the real `authenticated` role and supplies a synthetic JWT s
 The database release gate is:
 
 ```text
-fresh local stack → replay all ten migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
+fresh local stack → replay all twelve migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
 ```
 
 CI repeats this from an empty runner. No manual dashboard step is accepted as schema history.
 
 # Browser Smoke Tests
 
-Playwright runs the compiled application in desktop and mobile Chromium projects. It checks the root landmark/heading, absence of fatal console errors and the redacted health response. Run `pnpm build` before `pnpm test:e2e` when no reusable server is active.
+Playwright runs the compiled application in desktop and mobile Chromium. In addition to the complete Phase 7 auth/session suite, Phase 8 covers create/read/edit, favorite, archive with visible Undo/restore, deterministic tag search, saved return state, sparse AppearanceVariant labels, hostile-Origin replay against persisted data, empty state and known-ID User A/User B isolation. Unit coverage verifies that progressive result limits are normalized and bounded; the UI exposes a keyboard-accessible `Показать ещё` fallback.
 
 # Accessibility Tests
 
-`@axe-core/playwright` checks the foundation shell in both viewports. Semantic HTML, `lang="ru"`, keyboard focus, skip navigation and reduced-motion styling also require manual review as interactive features arrive.
+`@axe-core/playwright` checks the public foundation shell, auth page and Wardrobe empty/grid, mobile filter dialog, new, detail and edit states in both viewports. Semantic HTML, labelled fields, native modal filtering, pending/error feedback, `lang="ru"`, keyboard focus, skip navigation and reduced-motion styling remain manual review companions.
 
 # Security Regression Tests
 
-Current automated checks cover known-ID cross-user reads, missing anonymous grants, missing direct mutation grants, cross-account FK injection and sensitive log-key removal. Future feature suites must add Auth/session, IDOR, CSRF origin, private Storage, upload validation, cache isolation, export/deletion and replay tests before those capabilities ship.
+Automated definitions cover known-ID and search cross-user reads, account API scope, missing anonymous/direct/operational grants, cross-account FK injection, privileged bootstrap denial/idempotency, canonical redirect/origin policy, invalid sessions, recovery enumeration resistance, private/no-store responses, persistent owner binding and secret patterns. Definitions are not reported passing until their command completes. Private Storage, uploads, export/deletion and product-object IDOR remain future feature gates.
 
 # Fixtures
 
@@ -62,12 +62,28 @@ SQL fixtures use reserved-looking UUIDs and `example.invalid` emails. No real us
 
 # CI Gates
 
-The application job runs frozen install, formatting, lint, typecheck, unit tests and build. The database job starts local Supabase, resets/replays, lints, runs pgTAP and generates types. The browser job installs Chromium and runs Playwright/axe. CI has read-only repository permission and only synthetic public configuration.
+The application job runs frozen install, formatting, lint, typecheck, unit tests and build. The database job starts local Supabase, resets/replays, lints, runs pgTAP and generates types. The browser job starts/resets local Supabase, installs Chromium and runs the real auth Playwright/axe flow, then always stops the stack. CI has read-only repository permission.
 
 # What Is Deferred
 
-Product flow tests, Auth/session tests, Storage tests, upload/image adversarial fixtures, import archives, background workers, accessibility interaction coverage and performance budgets are deferred to the phases that implement those capabilities. Source Audit remains mandatory before real import fixtures or detailed Bulk Import behavior.
+OAuth/MFA, production email, private Storage, upload/image adversarial fixtures, import archives/Bulk Import, onboarding, Outfit/Wear/Calendar/Analytics, background workers and performance budgets remain deferred. Source Audit remains mandatory before real import fixtures or detailed Bulk Import behavior.
 
 # Phase-specific Release Gates
 
-Phase 6 requires every application, database and browser command to pass, generated types to reflect the migrated schema, and a manual no-secret/no-public-storage review. On this workstation the application and browser gates pass; the database gate is pending solely because Docker/Podman is unavailable. Therefore Phase 6 must remain unapproved until CI or a suitable local machine records passing DB migration/RLS results.
+Phase 7 requires application/database/browser gates, generated bootstrap types, a manual secret boundary review and the checklist in `PROJECT_STATE.md`.
+
+Final Phase 7 status: the remediation gate above passed, repeat external review approved commit `544c089`, and the user explicitly approved Phase 7 in commit `52cc4cb`. Production deployment was not run.
+
+# Phase 8 Release Gate
+
+Phase 8 adds Wardrobe unit, database and real browser coverage. On 2026-09-17 the following local checks passed:
+
+- formatting, lint, typecheck and 51/51 unit assertions, including strict rejection of non-HTTP local/private-origin exceptions;
+- clean replay of all 12 migrations and controlled seed;
+- DB lint with no schema errors;
+- 90/90 pgTAP assertions, including aggregate create/update, reconcile-only create retry, optimistic conflict, category/color rejection, tags, sparse variants, favorite, archive/restore, draft-archive rejection, audit events, privileged-function denial, high-cardinality filter coverage and active-account/User A/B isolation;
+- database type generation with only the expected migration-12 command/search RPC signatures and no unexpected schema/type drift;
+- 32/32 Playwright tests across desktop/mobile, including the Phase 8 vertical-slice/isolation/account-state tests, real hostile-Origin replay and expanded Wardrobe accessibility coverage;
+- `pnpm security:secrets` and `git diff --check`.
+
+Independent Phase 8 review initially returned `CHANGES REQUIRED`; no P0 was found, and all P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.

@@ -1648,7 +1648,69 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      bootstrap_account: {
+        Args: { p_account_id: string; p_auth_user_id: string }
+        Returns: {
+          account_id: string
+          account_state: string
+        }[]
+      }
+      save_wardrobe_item: {
+        Args: {
+          p_account_id: string
+          p_brand: string
+          p_category_id: string
+          p_color_ids: string[]
+          p_custom_labels: string[]
+          p_description: string
+          p_display_name: string
+          p_expected_version: number
+          p_item_id: string
+          p_material: string
+          p_notes: string
+          p_pattern: string
+          p_purpose_labels: string[]
+          p_record_state: string
+          p_reference_code: string
+          p_season_ids: string[]
+          p_size_label: string
+          p_style_labels: string[]
+          p_variant_labels: string[]
+        }
+        Returns: {
+          item_id: string
+          item_version: number
+        }[]
+      }
+      search_wardrobe_item_ids: {
+        Args: {
+          p_category_id?: string
+          p_color_id?: string
+          p_favorite?: boolean
+          p_lifecycle_state?: string
+          p_limit?: number
+          p_query?: string
+          p_season_id?: string
+          p_tag_id?: string
+        }
+        Returns: {
+          item_id: string
+        }[]
+      }
+      set_wardrobe_item_state: {
+        Args: {
+          p_account_id: string
+          p_action: string
+          p_expected_version: number
+          p_item_id: string
+        }
+        Returns: {
+          is_favorite: boolean
+          item_id: string
+          item_version: number
+          lifecycle_state: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

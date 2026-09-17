@@ -51,8 +51,8 @@ const actualTables = [...allSql.matchAll(/create table public\.([a-z_]+)/g)]
   .sort();
 
 const errors = [];
-if (migrationNames.length !== 10)
-  errors.push(`expected 10 migrations, found ${migrationNames.length}`);
+if (migrationNames.length !== 12)
+  errors.push(`expected 12 migrations, found ${migrationNames.length}`);
 if (JSON.stringify(actualTables) !== JSON.stringify(expectedTables)) {
   errors.push(`table inventory mismatch: ${JSON.stringify(actualTables)}`);
 }
@@ -74,5 +74,5 @@ if (errors.length > 0) {
   console.error(`Schema inventory check failed:\n${errors.join("\n")}`);
   process.exitCode = 1;
 } else {
-  console.info("Schema inventory passed: 10 migrations, 31 tables, all tables RLS-enabled.");
+  console.info("Schema inventory passed: 12 migrations, 31 tables, all tables RLS-enabled.");
 }
