@@ -1,6 +1,6 @@
 # AI Wardrobe — Testing
 
-**Status:** Phase 8 approved: YES; production deployment: NOT RUN; Phase 9: next phase, not started.
+**Status:** Phase 8 approved: YES; Phase 9 gate: PASS, external review: APPROVE WITH WARNINGS, approval: YES; production deployment: NOT RUN; Phase 10: not started.
 
 # Testing Principles
 
@@ -87,3 +87,13 @@ Phase 8 adds Wardrobe unit, database and real browser coverage. On 2026-09-17 th
 - `pnpm security:secrets` and `git diff --check`.
 
 Independent Phase 8 review initially returned `CHANGES REQUIRED`; no P0 was found, and all P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.
+
+# Phase 9 Media Gate
+
+Phase 9 adds unit tests for path/state/validation contracts; pgTAP for buckets, policies, grants, capability transitions, replay, concurrency and User A/User B isolation; and real local Storage API tests for authenticated TUS, anonymous denial, known-path isolation, overwrite denial, original-read denial and rendition-write denial. Adversarial fixtures cover corrupt content, false MIME, unsupported HEIC/HEIF/SVG/GIF/AVIF/PDF, multiple frames, excessive dimensions and pixel budget.
+
+Worker tests cover job deduplication, leases, expired-lease recovery, bounded retry, crash-before-record and crash-after-object cases. Playwright covers accessible upload progress, retry, failure, quarantine, ready placeholders, reorder/primary/replace/remove, account switching and exact-origin rejection on desktop/mobile. Delivery tests assert authorization and exact cache/nosniff headers. The full gate also regenerates database types, checks drift, scans repository and browser bundles for secrets and builds production output.
+
+On 2026-09-17 the Phase 9 local gate passed: formatting, lint and typecheck; 65/65 unit assertions; clean replay of all 13 migrations; DB lint with no schema errors; 146/146 pgTAP assertions; real Storage API integration with authenticated TUS transport retry, User A/User B and anonymous denial, overwrite/original-read/rendition-write denial and duplicate completion; byte-for-byte stable generated database types; 36/36 Playwright desktop/mobile tests including accessibility and private delivery headers; repository plus 47-file browser-bundle secret scan; 31-table RLS schema inventory; production build; and `git diff --check`.
+
+The independent implementation review found and corrected completion replay, processing-retry, rendition-existence, cleanup-FK, gallery mutation serialization and primary-removal/reorder semantics defects before the final gate. No blocking findings remain. The external review outcome is `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 9 on 2026-09-18. Hosted Storage/production scheduling remain untested, general antivirus remains outside the allowlisted manual-image scope, and the stable type generator retains its known nonfatal `MaxListenersExceededWarning`. Production deployment is NOT RUN and Phase 10 is NOT STARTED.

@@ -860,3 +860,11 @@ The request path is `browser → Next proxy refresh/getUser → protected Server
 Server Actions own password signup/login/recovery/update/logout mutations and enforce exact same-origin request metadata. Callback destinations are local allowlisted paths. Authenticated pages and account responses are dynamic and `private, no-store`; no service worker or shared private cache was introduced.
 
 This is an implemented and locally tested Phase 7 slice, not an approval claim. It adds no onboarding, wardrobe module, Storage path, import, export/deletion execution, job runner or public API.
+
+# Phase 9 Private Media Runtime
+
+Phase 9 follows D-098. The browser transfers an original directly to private Supabase Storage over authenticated TUS, but the application server first derives the active account and allocates the only permitted object path. Completion is a separate exact-origin command that verifies Storage state and enqueues work. A leased worker performs validation and immutable rendition generation. Product reads use a same-origin authorized delivery route; neither originals nor signed URLs are exposed to the browser.
+
+The media aggregate deliberately keeps `media_assets` (source lifecycle), `media_bindings` (item/variant role, view and ordering) and `media_renditions` (derived bytes) separate. `AppearanceVariant` describes a real physical presentation of one item; `ImageView` describes a camera/viewpoint and cannot create a new variant. ClothingItem archive does not trigger media deletion.
+
+All privileged mutations are capability-specific. Browser input never controls account, user or owner identifiers. Storage RLS independently constrains the direct-upload surface, while database RLS independently constrains media metadata reads. Cleanup calls the Storage API and only then reconciles database state; application SQL never inserts, updates or deletes `storage.objects` rows directly.

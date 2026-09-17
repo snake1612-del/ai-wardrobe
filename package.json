@@ -14,6 +14,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:storage": "node scripts/test-media-storage.mjs",
     "test:watch": "vitest",
     "test:db": "supabase test db",
     "test:e2e": "node scripts/run-e2e.mjs",
@@ -27,6 +28,8 @@
     "db:lint": "supabase db lint --local --level warning",
     "db:inventory": "node scripts/check-schema-inventory.mjs",
     "db:types": "node scripts/generate-database-types.mjs",
+    "media:worker": "NODE_OPTIONS=--conditions=react-server tsx scripts/media-worker.ts",
+    "media:worker:drain": "NODE_OPTIONS=--conditions=react-server tsx scripts/media-worker.ts --drain",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm db:inventory && pnpm security:secrets && pnpm build"
   },
   "dependencies": {
@@ -35,6 +38,9 @@
     "next": "16.3.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "0.0.1",
+    "sharp": "0.35.4",
+    "tus-js-client": "4.3.1",
     "zod": "4.6.5"
   },
   "devDependencies": {
@@ -50,6 +56,7 @@
     "prettier": "3.9.6",
     "supabase": "2.117.0",
     "tailwindcss": "4.3.3",
+    "tsx": "4.20.6",
     "typescript": "6.0.3",
     "vitest": "5.0.0"
   }

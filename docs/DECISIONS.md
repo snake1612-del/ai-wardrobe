@@ -2349,3 +2349,40 @@ High-cardinality structured filtering is implemented separately as the authentic
 ### Status
 
 Accepted — approved Phase 8 implementation decision. Independent and repeat review findings were remediated; production deployment was not run and Phase 9 remains not started.
+
+## D-098 — Private media uses authenticated TUS upload, quarantined processing and same-origin delivery
+
+### Decision
+
+Phase 9 uses authenticated resumable Supabase TUS uploads with the current user JWT. A trusted server command derives the active account, allocates an opaque immutable object key and creates an `awaiting_upload` media intent. The browser may only insert that exact object into the private `wardrobe-originals` bucket; it cannot choose ownership, overwrite an object, list/read originals or write renditions. Signed upload and download URLs are not used.
+
+Completion is an exact-origin, idempotent server command. It verifies the expected object through the Storage API before moving the asset to `uploaded` and enqueueing validation. An isolated, leased worker validates magic bytes, complete decode, single-frame content, dimensions and a 40-megapixel budget before re-encoding immutable WebP renditions (`thumbnail`, `medium`, `full`) with pinned sharp/libvips. JPEG, PNG and WebP are accepted; HEIC/HEIF, SVG, GIF, AVIF, PDF and all other formats are rejected. An unvalidated upload never becomes ready production media.
+
+Private renditions are delivered only through an authorized same-origin route. The route re-verifies the Auth subject and active account, resolves the ready rendition under account RLS, downloads the exact object server-side and returns `Cache-Control: private, no-store` plus `X-Content-Type-Options: nosniff`. Originals have no browser-read path. Service-role authority remains in capability-specific server/worker modules with an empty PostgreSQL `search_path`.
+
+Gallery primary/reorder/replace/remove commands keep `media_assets`, `media_bindings` and `media_renditions` separate, preserve `AppearanceVariant` versus `ImageView`, use optimistic ClothingItem version checks and never delete media merely because a ClothingItem is archived. Replacement publishes only after the replacement asset is ready. Unreferenced assets move through `pending_delete`; cleanup reconciles Storage through the Storage API and never mutates `storage.objects` directly.
+
+### Limits and lifecycle
+
+- Original object size: at most 16 MiB.
+- Image dimensions: at most 12,000 pixels on either axis and 40,000,000 decoded pixels total.
+- Upload lifecycle: `awaiting_upload -> uploaded -> validating -> processing -> ready`, with explicit `failed`, `quarantined` and `pending_delete` branches.
+- Rendition profile `media-v1`: 480, 960 and 1600 pixel long-edge WebP outputs, auto-oriented, metadata-stripped, never upscaled and never destructively cropped.
+- Worker jobs are capability-claimed with bounded leases, attempts and deduplication; expired leases are reclaimable and terminal failures remain observable.
+- Cross-reload TUS URL persistence is disabled to avoid account-switch capability leakage. Retry within the active authenticated session is supported.
+
+### Alternatives considered
+
+- Narrow signed upload capabilities and signed derivative download URLs.
+- Proxying original upload bytes through the Next.js process.
+- Public buckets or browser-readable originals.
+- Synchronous decode and rendition generation inside the completion request.
+- Treating an image as a ClothingItem or `AppearanceVariant` as an image view.
+
+### Consequences
+
+The application needs private Storage buckets/RLS, a TUS client, a pinned image decoder, a separately invokable worker and Storage API integration tests in addition to pgTAP. Same-origin delivery favors authorization and revocation over CDN caching. HEIC users receive an explicit unsupported-format error in Phase 9. Malware protection is limited to a narrow allowlist, structural decode and safe re-encode; archives, Bulk Import, original download and a general antivirus service remain out of scope and require a later threat-model decision.
+
+### Status
+
+Accepted, implemented and explicitly approved for Phase 9 on 2026-09-18 with external-review outcome `APPROVE WITH WARNINGS`. Accepted limitations: hosted Storage and production worker scheduling were not validated, general antivirus is outside the allowlisted manual-image scope, and type generation retains a known nonfatal `MaxListenersExceededWarning` while producing byte-for-byte stable output. Production deployment and Phase 10 are not authorized by this decision.

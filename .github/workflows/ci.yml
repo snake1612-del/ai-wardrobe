@@ -53,8 +53,10 @@ jobs:
       - run: pnpm db:reset
       - run: pnpm db:lint
       - run: pnpm test:db
+      - run: pnpm test:storage
       - run: pnpm db:types
       - run: grep -Fq 'bootstrap_account' src/infrastructure/database/database.types.ts
+      - run: grep -Fq 'create_media_upload_intent' src/infrastructure/database/database.types.ts
       - run: pnpm typecheck
       - if: always()
         run: pnpm exec supabase stop --no-backup
