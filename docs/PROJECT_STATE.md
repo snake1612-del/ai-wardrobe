@@ -1,11 +1,11 @@
 # AI Wardrobe — Project State
 
-**Дата:** 2026-09-16
-**Статус:** Phase 7 approved / production deployment not run / Phase 8 next
+**Дата:** 2026-09-17
+**Статус:** Phase 8 implemented and locally tested / external-review findings remediated / approval NO / production deployment NOT RUN
 
 # Current Phase
 
-**Phase 7 — Authentication & Privacy Foundation — Approved / not deployed**
+**Phase 8 — Wardrobe Core — Implemented and locally tested / external-review findings remediated / not approved / not deployed**
 
 # Completed
 
@@ -19,6 +19,15 @@
 - Browser suite расширен для real Mailpit→PKCE recovery, refresh rotation, expired session, same-profile account switch, hostile Server Action Origin и protected HTML headers.
 - Post-remediation quality gate пройден: clean replay всех 11 миграций, DB lint, 51/51 pgTAP, database type generation без schema/type drift, typecheck, 26/26 Playwright desktop/mobile, accessibility и secret scan — PASS.
 - Initial external Phase 7 review завершён с outcome `CHANGES REQUIRED` без P0/P1; документационный P2 и оба P3 исправлены. Repeat external review commit `544c089` завершён с outcome `APPROVE`, после чего пользователь явно утвердил Phase 7. Production deployment не запускался.
+- Реализован первый non-AI Wardrobe vertical slice: create/read/edit draft и committed ClothingItem, favorite/unfavorite, archive/restore с immediate Undo, detail и responsive grid с bounded progressive `Показать ещё`.
+- Добавлены deterministic server-side search и structured filters по category/subcategory reference, color, season, purpose/style/custom tag, lifecycle и favorite; URL state сохраняется через detail/edit.
+- Реализована sparse AppearanceVariant metadata model: обычная вещь не получает variant row, а reversible item остаётся одной physical ClothingItem.
+- Mutation scope выводится только из verified server account context; browser не выбирает account/user/owner. Reads выполняются user-context client под forced RLS.
+- Migration 12 добавляет service-role-only aggregate commands с optimistic version, atomic typed relations, idempotent create reconciliation и narrow archive/restore audit events.
+- Responsive UI показывает честный no-image placeholder, explicit draft/favorite/archive states, distinct empty/filtered-empty/loading/error/success/failure states, mobile full-height filter sheet, desktop filter rail и keyboard-accessible bounded progressive reveal.
+- Initial independent Phase 8 review завершён с outcome `CHANGES REQUIRED`: P0 отсутствуют; P1/P2/P3 findings по inactive-account access, high-cardinality filters, draft archive, error normalization и accessibility исправлены.
+- Phase 8 local gate после remediation: 12-migration clean replay, DB lint, 90/90 pgTAP, generated types без unexpected drift, 47/47 unit, 32/32 Playwright desktop/mobile, accessibility, hostile-Origin CSRF replay, User A/B isolation и secret scan — PASS.
+- Read-only Source Audit не выполнен: каталог `sources/` и реальный source archive отсутствуют. Данные не выдумывались; Bulk Import, production records и activation contract implementation не создавались.
 
 - Определены product vision, problems, target users, JTBD и core user loop.
 - Описаны 19 ключевых journeys: onboarding, bulk import, manual/AI-assisted add, search, outfit creation/save/reuse, wear tracking, calendar, analytics, wishlist, declutter, packing, AI styling, weather recommendation, purchase checking, gap analysis и AI packing.
@@ -172,13 +181,13 @@
 
 # Not Implemented
 
-**Wardrobe product features не реализованы; создан только project/data/auth foundation.**
+**Phase 8 Wardrobe Core реализован; перечисленные ниже более поздние product capabilities остаются вне scope.**
 
 - Remote Supabase project не создавался; migrations и RLS/grants проверены только в локальном development stack.
 - Social/OAuth providers, MFA, onboarding/profile collection и production email delivery не реализованы.
 - Queue/job implementation, workers и schedules не создавались.
 - AI prompts, tool schemas, provider calls и model implementation не создавались.
-- Wardrobe UI/CRUD, onboarding, image upload/processing, Bulk Import, Outfit Builder, Wear, Calendar и Insights не реализованы.
+- Onboarding, image upload/processing, Bulk Import, Outfit Builder, Wear, Calendar и Insights не реализованы. Wardrobe UI/CRUD реализован только в утверждённом Phase 8 scope.
 - Product high-fidelity screens и interactive prototype не реализованы; foundation shell не является продуктовым экраном.
 - Storage buckets/policies, image/import pipelines, full PWA service worker/offline behavior и integrations не реализованы.
 - Supabase/Vercel/OpenAI projects, buckets, queues, environments, credentials и deployment не создавались.
@@ -200,6 +209,7 @@
 - AI cost/latency может превысить utility.
 - Cross-user data leak имеет критическое влияние даже при низкой вероятности.
 - Feature creep со стороны wishlist, packing, AI и visualizations может сорвать core MVP.
+- Bounded progressive Wardrobe reveal ограничен 960 результатами ниже Data API row ceiling; до beta для больших каталогов требуется keyset pagination и representative performance validation.
 - Неопределённая hard-delete/backup policy может конфликтовать с portability/privacy promise.
 
 # Required Before Final Bulk Import UX
@@ -313,12 +323,39 @@ All technical criteria below passed the post-remediation application, database a
 - [x] Phase 7 approved by explicit user decision.
 - [ ] Production deployment — NOT RUN.
 
-# Next Phase
+# Phase 8 Acceptance Checklist
 
-**Phase 8 — next phase / not started.**
+Technical criteria below passed locally on 2026-09-17. This does not constitute external review or approval.
 
-Phase 7 implementation, remediation, technical gates, repeat external review and explicit approval are complete. Production deployment was not run. Phase 8 does not start automatically and requires a separate explicit request. The mandatory Bulk Import Source Audit remains a downstream gate for the final import contract/UX.
+- [x] Authenticated user can create, reopen and edit committed or incomplete draft ClothingItem records.
+- [x] One physical item remains one ClothingItem; AppearanceVariant rows are sparse label metadata subordinate to that item.
+- [x] Favorite/unfavorite and archive/restore are optimistic-versioned; archive never deletes the row, exposes immediate Undo and restore reuses the same ID.
+- [x] Category IDs and controlled color/season IDs are revalidated by the server command; hierarchy remains the single category reference plus its controlled parent.
+- [x] Purpose/style/custom tags are owner-scoped, deduplicated on active normalized identity and filterable without cross-account reuse.
+- [x] Deterministic server-side search and filters cover category, color, season, tag, lifecycle and favorite; active items are the default.
+- [x] Search/filter state is private-bookmarkable and preserved through Item detail, favorite and edit/save/cancel paths.
+- [x] Wardrobe grid is responsive and accessible, with explicit draft/favorite/archive states, honest no-image placeholders and bounded keyboard-accessible progressive reveal.
+- [x] Empty, filtered-empty, loading, success, validation/conflict failure and route error states are implemented.
+- [x] Reads use verified user context plus forced RLS; service-role mutation commands receive only a server-derived account ID.
+- [x] `anon` and `authenticated` cannot execute wardrobe mutation functions or directly mutate domain tables.
+- [x] Known foreign UUID read and mutation attempts fail; automated User A/User B browser and pgTAP isolation pass.
+- [x] Cookie-backed mutations retain exact-origin protection; a real hostile-Origin Server Action replay does not change the database.
+- [x] Protected Wardrobe HTML/RSC remains behind `/app` auth enforcement and `Cache-Control: private, no-store`.
+- [x] Create retry with the same server-generated item ID reconciles without duplicating or rewriting the aggregate.
+- [x] Restricted/deleting accounts cannot read Wardrobe routes or rows; the shared layout and RLS account resolver both require active account state.
+- [x] Search and relational filters execute through a bounded authenticated `SECURITY INVOKER` RPC; high-cardinality regression proves the result is not silently truncated at 1000 relation rows.
+- [x] Draft items cannot be archived in either UI or database command; foreign/missing IDs share the same non-revealing result class.
+- [x] Clean replay of all 12 migrations, DB lint, 90/90 pgTAP, generated DB types, typecheck, 47/47 unit, 32/32 Playwright desktop/mobile, accessibility and secret scan pass.
+- [x] Source Audit availability was checked read-only; `sources/`/source archive is absent, so no source data or `OUT-10` fixture was invented.
+- [x] Bulk Import, private Storage, images, onboarding, Outfit Builder, Wear, Calendar, Analytics, export/delete execution, AI and Phase 9 were not implemented.
+- [x] Independent external review — COMPLETED, outcome `CHANGES REQUIRED`; all identified findings remediated and locally revalidated.
+- [ ] Phase 8 approved — NO.
+- [ ] Production deployment — NOT RUN.
+
+# Next Step
+
+**Commit and Pull Request the remediated Phase 8 branch for human review and explicit approval. Phase 9 has not started.**
 
 # Gate
 
-**Phase 7 is approved. Production deployment is NOT RUN. Phase 8 is next and has not started.**
+**Phase 8 is implemented, externally reviewed and remediated, but is NOT explicitly approved and NOT deployed.**

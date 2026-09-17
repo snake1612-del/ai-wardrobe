@@ -54,7 +54,7 @@ jobs:
       - run: pnpm db:lint
       - run: pnpm test:db
       - run: pnpm db:types
-      - run: rg 'bootstrap_account' src/infrastructure/database/database.types.ts
+      - run: grep -Fq 'bootstrap_account' src/infrastructure/database/database.types.ts
       - run: pnpm typecheck
       - if: always()
         run: pnpm exec supabase stop --no-backup

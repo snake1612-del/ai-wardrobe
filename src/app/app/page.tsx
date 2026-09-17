@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { resolveAccountContext } from "@/modules/account/server/account-context";
@@ -34,10 +35,14 @@ export default async function ProtectedAppPage() {
             <div className="space-y-3">
               <StatusBadge tone="success">Защищённая сессия</StatusBadge>
               <h1 className="text-3xl font-semibold">AI Wardrobe</h1>
-              <p className="text-text-secondary">
-                Аккаунт готов. Функции гардероба появятся в следующей фазе.
-              </p>
+              <p className="text-text-secondary">Ваш приватный каталог готов к работе.</p>
               <p className="text-sm text-text-tertiary">{context.email ?? "Email недоступен"}</p>
+              <Link
+                className="inline-flex min-h-12 items-center rounded-lg bg-accent px-5 font-semibold text-white"
+                href="/app/wardrobe"
+              >
+                Открыть гардероб
+              </Link>
             </div>
           </AuthStateBoundary>
         </div>

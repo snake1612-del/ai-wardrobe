@@ -2321,4 +2321,31 @@ External-review remediation uses required server-only `APP_ORIGIN` as the canoni
 
 ### Status
 
-Recommended — pending external Phase 7 review.
+Accepted — approved Phase 7 implementation decision.
+
+## D-097 — Wardrobe writes use capability-specific RPCs while reads retain user-context RLS
+
+### Decision
+
+Implement the first invariant-heavy Wardrobe aggregate writes as two narrow server-only PostgreSQL capabilities: `save_wardrobe_item` and `set_wardrobe_item_state`. The application verifies the Auth subject, derives the durable account, enforces exact-origin request intent and validates the payload before a service-role client invokes either function. Keep ordinary reads on the publishable user-context client under forced RLS. Do not expose direct browser mutation grants or a generic privileged repository.
+
+### Why
+
+D-091 intentionally deferred the exact command transport until the first real aggregate. ClothingItem save spans the root, controlled joins, owner-scoped tags and sparse AppearanceVariants and must be atomic. A reviewed function gives that transaction one bounded authority while preserving RLS as an independent read/isolation layer and keeping ownership outside browser control.
+
+### Alternatives considered
+
+- Direct authenticated PostgREST inserts/updates across aggregate tables.
+- A broad service-role repository callable by arbitrary application modules.
+- A pooled SQL adapter before the project has another transaction shape that justifies it.
+- Client-side compensation across multiple independent writes.
+
+### Consequences
+
+Each new privileged command still requires its own schema, grants, server authorization, idempotency/concurrency behavior and negative tests; D-097 is not permission to bypass RLS generically. Functions use an empty search path and are revoked from `public`, `anon` and `authenticated`. The service credential stays in `server-only` code. Reads and known-ID denial continue to be proven with real authenticated RLS context. A future pooled adapter may coexist if it preserves the same capability boundary.
+
+High-cardinality structured filtering is implemented separately as the authenticated-only `SECURITY INVOKER` function `search_wardrobe_item_ids`. It keeps user identity and ownership under RLS, performs relational filters in PostgreSQL and caps results below the Data API row ceiling; it is not a privileged write capability.
+
+### Status
+
+Implemented in Phase 8. Independent review findings were remediated; explicit Phase 8 approval remains separate.

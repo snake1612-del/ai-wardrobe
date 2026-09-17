@@ -1,9 +1,9 @@
 # AI Wardrobe — Security Architecture
 
-**Phase:** 4 — Technical Architecture  
-**Status:** Approved / Complete  
+**Phase:** 4 approved security architecture with Phase 6–8 implementation appendices
+**Status:** Phase 8 local security gate passed; external-review findings remediated
 **Baseline:** Approved PRD, UX, Design System and Decisions D-001–D-075  
-**Date:** 2026-09-15
+**Date:** 2026-09-17
 
 # Security Principles
 
@@ -355,4 +355,21 @@ Security checks are `pnpm test`, `pnpm test:db` and `pnpm test:e2e`. The pgTAP m
 - Existing database tests cover known-ID/FTS User A/B isolation and operational grants. The expanded browser suite covers real PKCE recovery, refresh rotation, expired/revoked sessions, same-profile switching, hostile Origin and cache headers.
 - The secret scanner covers Markdown/CSS and application/config sources for legacy service-role/JWT shapes plus modern `SUPABASE_SECRET_KEY` assignments and `sb_secret_` markers, with synthetic regression fixtures and an explicit safe `.env.example` placeholder.
 
-The complete remediation gate passes: formatting, lint, 36/36 unit assertions, typecheck, production build, clean replay of all 11 migrations, DB lint, 51/51 pgTAP, database type generation without unexpected schema/type drift, 26/26 Playwright desktop/mobile including accessibility, and secret scan. External review is COMPLETED with outcome `CHANGES REQUIRED`, no P0/P1 findings and a documentation-only mandatory fix. Phase 7 is not approved and production deployment was not run; repeat external review and explicit approval remain required. Storage, onboarding, export/delete execution, MFA/social providers and production email remain outside Phase 7.
+Final Phase 7 status: all listed checks passed, repeat external review approved commit `544c089`, and the user explicitly approved Phase 7 in commit `52cc4cb`. Production deployment was not run. Storage, onboarding, export/delete execution, MFA/social providers and production email remained outside Phase 7.
+
+# Phase 8 Security Implementation
+
+- Wardrobe routes remain below protected `/app`; request proxy verification and `Cache-Control: private, no-store` apply to HTML/RSC responses.
+- Every read uses the server-created publishable user-context client, so forced RLS derives an active account from `auth.uid()`. Restricted/deleting accounts resolve no rows, known foreign item IDs return no row and search/filter relation queries remain owner-scoped.
+- Browser roles keep SELECT-only ordinary-domain grants and cannot execute either migration-12 command. There is no browser import of `SUPABASE_SECRET_KEY` or generic service-role database client.
+- Each mutation first requires exact canonical Origin/Host/protocol and a verified ready account context. Client `account_id`, `user_id` and `owner_id` are neither accepted nor trusted.
+- The server-only capability client invokes only `save_wardrobe_item` or `set_wardrobe_item_state`. Both functions have an empty search path, validate scope/state/version/reference data and are executable only by `service_role`. The separate bounded `search_wardrobe_item_ids` function is `SECURITY INVOKER`, uses an empty search path and remains subject to authenticated RLS.
+- Aggregate create/edit is atomic. Same-ID create retry reconciles without rewrite; stale version, foreign identity, invalid category/color/season and direct authenticated invocation fail closed.
+- Archive changes lifecycle/timestamp and emits a narrow audit event; it does not delete ClothingItem or its history. The visible Undo submits a normal version-checked restore against the same server-derived account scope.
+- Application responses expose localized safe failures. Structured logs record only stable event names and database error codes, never notes, tags, tokens, cookies, SQL text or service credentials.
+- The real browser CSRF regression aborts the browser request, replays its captured Server Action payload through the authenticated API cookie jar with `Origin: https://evil.example`, and proves directly from the database that the forged title was not written.
+- User A/User B browser and pgTAP tests cover list isolation, known-ID read denial, privileged mutation denial, non-revealing foreign mutation errors and server-derived ownership. Restricted/deleting-account regressions prove both route and RLS denial.
+
+Local Phase 8 security gate passed with 90/90 pgTAP, 47/47 unit, 32/32 Playwright desktop/mobile, accessibility across empty/grid/filter/new/detail/edit states, secret scanning and no unexpected generated-type drift. Private Storage, uploads/images, Bulk Import, onboarding, Outfit/Wear/Analytics, export/delete execution, AI and Phase 9 remain absent.
+
+Independent Phase 8 external security review completed with outcome `CHANGES REQUIRED`; the P1/P2/P3 findings were remediated and locally revalidated. Phase 8 approval is NO. Production deployment is NOT RUN.
