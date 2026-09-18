@@ -13,7 +13,7 @@ Mobile uses four stable bottom destinations plus a separate Create button. Deskt
 
 The interface is image-first but every image has a textual identity. Metadata is progressively disclosed. Obvious actions such as Wear today use immediate save plus Undo; consequential changes use confirmation; imports and future AI writes use preview plus confirm. Draft recovery is shared across item, outfit, import and future AI flows.
 
-Bulk Import IA and its stage model are defined, but exact mapping, grouping, duplicate and image/variant reconciliation UX remain provisional until the mandatory Source Audit.
+Bulk Import IA and its stage model are implemented. The completed Source Audit and accepted D-099 bound mapping, grouping, duplicates and image/variant reconciliation; detailed controls remain subject to implementation review and usability validation.
 
 # UX Principles
 
@@ -270,11 +270,11 @@ Onboarding aims to establish a trustworthy wardrobe and reveal the core loop wit
 
 Permission requests are contextual (camera only after camera action). Progressive tips point to Create, Wear today and Calendar after relevant content exists. Onboarding completion is resumable and does not gate Settings/export/delete.
 
-# Bulk Import UX — Provisional Pending Source Audit
+# Bulk Import UX — Source-Audited Contract Pending D-099 Approval
 
-Bulk Import is an MVP activation flow and the recommended onboarding path for the primary user who already has a digitized wardrobe. Its detailed mapping, grouping, duplicate resolution, image reconciliation, source/catalog mapping and AppearanceVariant import handling remain explicitly provisional until the read-only audit of the real source wardrobe. The staged interaction model may be approved now without assuming an unverified file structure or blocking the rest of Phase 2.
+Bulk Import is an MVP activation flow and the recommended onboarding path for the primary user who already has a digitized wardrobe. The read-only audit found a two-part image-only set without a manifest, stable item IDs or source/catalog mapping. Proposed D-099 therefore requires manual Resolve and forbids filename/similarity authority; detailed controls remain pending approval and implementation review.
 
-Provisional stages:
+Source-audited stages:
 
 1. **Choose source** — identify supported material in plain language; preserve originals.
 2. **Read & prepare** — progress, cancel-safe boundary and recoverable failures.
@@ -286,7 +286,7 @@ Provisional stages:
 
 AppearanceVariants are first-class in review: several appearances remain under one Physical Item, may have labels and their own catalog images/ImageViews, and never become separate ClothingItems merely because they look different. Front/back alone are ImageViews unless source evidence says they are selectable appearances.
 
-Before this UX is finalized, the audit must inspect: existing item IDs; source photographs; catalog images; front/back and other views; AppearanceVariants; usage notes; naming conventions; and exact/possible duplicates. It must also establish whether historical wear data exists. Until then the document does not prescribe column schemas, folder rules, duplicate thresholds, batch limits or an automatic matching algorithm.
+The audit results and bounds are recorded in `docs/BULK_IMPORT_SOURCE_AUDIT.md`. The source provides no trustworthy item/view/variant/history mapping; those values stay unresolved until user review. D-099 deliberately does not define an automatic matching algorithm.
 
 # Future AI Surfaces
 
@@ -419,7 +419,7 @@ Each flow below preserves the current context on recoverable failure. `Cancel` m
 |   # | Flow                          | Trigger and main path                                                                                                                                                    | Branches                                                                                                                                                         | Success                                                                                      | Failure, cancel and recovery                                                                                                                                          |
 | --: | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |   1 | Onboarding                    | First authenticated visit → Welcome → choose context: existing digital wardrobe or start from scratch → follow Bulk Import #2 or capture first item #3 → success choices | Import is recommended for the primary existing-wardrobe user but optional; manual add is a full path; Skip opens empty Home; denied camera allows Files/no image | Imported wardrobe or first owned item exists; next core action is clear                      | Input/review is retained on upload/network failure; Cancel/Skip commits nothing; Resume card restores draft                                                           |
-|   2 | Bulk Import (provisional)     | Onboarding/Settings/Create → choose source → prepare → review groups → resolve/skip issues → preview → Confirm → result                                                  | Save review as draft; split/merge proposed physical items; map variant vs ImageView; retry failed subset                                                         | Confirmed items created once and batch result recorded                                       | Parse/write errors identify affected entries; Cancel before confirm creates nothing; retry is idempotent; final rules await source audit                              |
+|   2 | Bulk Import (D-099 accepted)  | Settings/Create → choose source → prepare → review groups → resolve/skip issues → preview → Confirm → result                                                             | Split/merge proposed physical items; map variant vs ImageView; retry failed subset                                                                               | Confirmed items created once and batch result recorded                                       | Parse/write errors identify affected entries; Cancel before confirm creates nothing; retry is idempotent; final usability validation remains                          |
 |   3 | Manual add item               | Create → Add item → image/name → optional details → Save                                                                                                                 | Quick save after minimum; More details; add variant via #4; possible duplicate warning allows review/cancel                                                      | Distinguishable active ClothingItem opens                                                    | Validation is inline; upload can retry/remove; unsaved exit offers Keep draft/Discard/Continue                                                                        |
 |   4 | Add AppearanceVariant         | Item edit/import review → Add appearance → helper explanation → label → own catalog images/ImageViews → choose default if useful → Save                                  | Label may be initially neutral; camera/files; front/back-only case redirects to ImageView instead                                                                | Variant belongs to same physical item and is selectable in builder                           | Failed media stays retryable; Cancel leaves item unchanged; archived duplicate can be inspected/restored                                                              |
 |   5 | Edit item                     | Item detail → Edit → change progressive fields/images/variants → Save                                                                                                    | Archive is separate #19; conflicting remote change offers Reload or Save as reviewed draft                                                                       | Item updates; historical WearEvent snapshots unchanged                                       | Inline validation/retry; Cancel with changes offers Keep draft/Discard; failed save preserves form                                                                    |
@@ -713,7 +713,7 @@ Open Questions are retained as gates; Phase 2 does not convert them into unrevie
 
 ## Must resolve in the explicit Bulk Import addendum or Phase 3 terminology review
 
-1. Complete the mandatory real-source audit before declaring detailed Bulk Import UX final: item IDs, photographs, catalog images, front/back, AppearanceVariants, usage notes, naming conventions and possible duplicates; also verify whether historical wear data exists.
+1. Resolved by `docs/BULK_IMPORT_SOURCE_AUDIT.md` and accepted D-099: the raw image-only set has no item IDs/mapping/history, so the implemented UX uses Choose → Prepare → Review → Resolve → Preview → Confirm → Results and cannot infer ImageView/AppearanceVariant or merge by similarity.
 2. Keep `Activity` as the working IA label for Calendar + Insights. During Visual Design / terminology review compare at minimum `Активность`, `История` and `Журнал`; changing the localized label must not change the IA.
 3. Test the AppearanceVariant helper copy with the known reversible item and at least one ordinary front/back-only item.
 
@@ -750,7 +750,7 @@ Open Questions are retained as gates; Phase 2 does not convert them into unrevie
 - [x] Calendar contains actual WearEvents only and has accessible month/agenda behavior.
 - [x] Insights state period, population, coverage and evidence drill-down; unknown is not zero.
 - [x] Archive/restore, Settings, export and account deletion are distinct and have proportional confirmation.
-- [x] Onboarding and provisional Bulk Import flows are complete enough for UX review, with final import details gated by source audit.
+- [x] The staged Bulk Import flow is implemented for review; source-dependent rules are bounded by accepted D-099. Onboarding remains outside Phase 10.
 - [x] Future AI, Wishlist and Packing surfaces remain lower-fidelity and do not distort the MVP IA.
 - [x] A shared draft, confirmation, feedback, empty/loading/error/offline and accessibility model is defined.
 - [x] Screen inventory is separated into MVP/V2/V3 and records entry, content, actions, states, exits and related screens.

@@ -1,7 +1,7 @@
 # AI Wardrobe — Security Architecture
 
-**Phase:** 4 approved security architecture with Phase 6–8 implementation appendices
-**Status:** Phase 8 local security gate passed; external-review findings remediated
+**Phase:** 4 approved security architecture with Phase 6–10 implementation appendices
+**Status:** Phase 9 approved with warnings; Phase 10 approved with warnings, technical gate PASS, security review `APPROVE WITH WARNINGS`
 **Baseline:** Approved PRD, UX, Design System and Decisions D-001–D-075  
 **Date:** 2026-09-17
 
@@ -151,6 +151,8 @@ Upload acceptance uses layered controls:
 13. User A/User B tests prove that guessed paths, IDs or capabilities cannot upload, complete, list or read across accounts.
 
 Parsing never executes macros/scripts and never resolves paths outside the staged archive. Future URL-based import is disabled until SSRF-safe fetch architecture exists. Failed/abandoned uploads expire via an owner-scoped, idempotent cleanup job. These controls apply identically whether transfer authorization is authenticated-RLS or a signed upload capability.
+
+The completed Phase 10 Source Audit narrows the first import adapter to `legacy-wardrobe-image-set/v1`. Accepted D-099 and migration 14 bound it to four ZIP parts, 1 GiB compressed/2 GiB expanded, 2,000 entries, 16 MiB per entry, 20:1 archive and 50:1 entry ratios, safe normalized relative paths, and magic-verified fully decoded single-frame JPEG/PNG within the D-098 dimension/pixel limits. Encryption, links, devices, executables, nested archives, traversal, duplicate normalized paths and Unicode collisions fail Prepare. Raw bytes stay in private quarantine, are never logged/rendered/executed, and are cleanup-eligible immediately after cancel or terminal Results.
 
 # Secrets
 
@@ -388,4 +390,20 @@ Independent Phase 8 security review initially returned `CHANGES REQUIRED`; the P
 
 The 2026-09-17 Phase 9 security gate passed with clean migration replay, DB lint, 146/146 pgTAP assertions, real Storage API/TUS integration, 65/65 unit assertions and 36/36 Playwright desktop/mobile tests. Anonymous and known-ID User A/User B isolation, exact-origin rejection, duplicate completion, overwrite denial, original-read denial, rendition-write denial, worker lease/retry recovery, delivery cache headers and accessibility all passed. Generated database types were byte-for-byte stable, and repository plus browser-bundle secret scanning found no privileged credential.
 
-Independent review findings around replay/retry state transitions, actual rendition-object verification, cleanup referential ordering, concurrent gallery commands and primary-removal/reorder semantics were corrected before the final gate. The external review outcome is `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 9 on 2026-09-18. Accepted limitations are: hosted Storage and the production worker scheduler were not validated; general antivirus is outside the current allowlisted manual-image scope; and the stable database type generator retains a known nonfatal `MaxListenersExceededWarning`. Production deployment is NOT RUN and Phase 10 is NOT STARTED.
+Independent review findings around replay/retry state transitions, actual rendition-object verification, cleanup referential ordering, concurrent gallery commands and primary-removal/reorder semantics were corrected before the final gate. The external review outcome is `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 9 on 2026-09-18. Accepted limitations are: hosted Storage and the production worker scheduler were not validated; general antivirus is outside the current allowlisted manual-image scope; and the stable database type generator retains a known nonfatal `MaxListenersExceededWarning`. Production deployment is NOT RUN.
+
+# Phase 10 Bulk Import Security Contract
+
+- The browser uploads ZIP parts only to the exact server-created private `wardrobe-imports` path using its current authenticated JWT. It receives no service-role credential and has no archive read/list/update/delete capability.
+- Completion treats the browser as untrusted and verifies the exact Storage object and observed size before one idempotent Prepare job is queued.
+- The isolated worker parses bytes in memory without executing entries or extracting into the repository. It rejects traversal, absolute/rootless paths, links/devices, executable modes, encryption, nested archives, duplicate normalized paths, unsupported methods and archive/decompression limits.
+- Only fully decoded single-frame JPEG/PNG assets within the Phase 9 dimension/pixel budget become quarantined staged MediaAssets. Client filename, ZIP order, UUID, timestamp, hash and perceptual similarity never authorize item identity or automatic merge.
+- Import sessions, parts, records and asset links are owner-scoped under forced RLS. Capability functions are `SECURITY DEFINER` with empty `search_path`, revoked from `anon`/`authenticated` and invoked only after verified server identity, active account resolution and exact-origin validation.
+- Review and Preview write staging decisions only. A sealed revision plus manifest hash and explicit Confirm are required before any ClothingItem, AppearanceVariant or MediaBinding mutation.
+- Update/link revalidate the owner-scoped target at Resolve and commit; update additionally requires the exact ClothingItem version. Known foreign IDs receive the same non-revealing failure class.
+- Per-record commit is atomic and terminal outcomes are replay-safe. Partial retry resets failed records only; successful records are never re-created.
+- Worker claims require both a valid job lease and an eligible session state. Cancellation invalidates queued parse/commit work; cleanup leases preserve terminal Results state.
+- Storage cleanup uses provider APIs. SQL only records deletion state and schedules existing media cleanup; application code never inserts, updates or deletes `storage.objects` directly.
+- Logs and errors expose bounded codes and safe counts only. Raw archive paths, filenames, notes, pixels, tokens, URLs and provider payloads are not logged.
+
+The final Phase 10 gate proved anonymous/User A/User B isolation, exact-origin/hostile-Origin behavior, IDOR resistance, no-pre-Confirm domain writes, duplicate completion/Confirm, worker lease/retry, overwrite/read denial, item-level conflict handling, accessibility, secret scanning and generated-type stability. The independent security review found no remaining P0/P1/P2 and returned `APPROVE WITH WARNINGS`; the user explicitly approved Phase 10 on 2026-09-18. Hosted Storage/production scheduling and operational cleanup evidence, whole-part worker memory sizing, stable-ID absence/manual Resolve and the known nonfatal type-generator warning remain accepted gates. Production deployment is NOT RUN and Phase 11 is NOT STARTED.

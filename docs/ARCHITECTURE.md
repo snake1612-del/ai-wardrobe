@@ -15,7 +15,7 @@ AI Wardrobe рекомендуется строить как **server-authoritat
 
 Изображения хранятся только в private storage. Browser получает authorized upload intent и загружает большой payload непосредственно в Storage; пользовательский HTTP request не ждёт производных. Original сохраняется, async pipeline валидирует и создаёт versioned thumbnail/medium/full renditions. UI получает только разрешённую derivative через короткоживущий signed URL или авторизованный delivery path; original не используется в grid.
 
-Bulk Import следует утверждённой staged модели: **Upload → Parse → Validate → Normalize → Preview → User decisions → Commit → Report**. Preview не меняет production wardrobe. Commit имеет durable session state, record-level outcomes, idempotency и ограниченные transaction groups. Точный source contract, grouping, duplicates, image reconciliation и detailed AppearanceVariant mapping остаются gated обязательным Source Audit.
+Bulk Import следует source-audited staged модели D-099: **Choose → Prepare → Review → Resolve → Preview → Confirm → Results**. Preview не меняет production wardrobe. Confirm seals an exact manifest/revision, а Commit имеет durable session state, record-level outcomes, idempotency и ограниченные transaction groups. Raw image set не имеет manifest/stable item IDs, поэтому grouping, image reconciliation и AppearanceVariant mapping всегда требуют явного Resolve.
 
 AI не входит в MVP. Будущая интеграция проходит только через server-side AI Gateway: task routing, минимизация контекста, allowlisted tools, strict structured outputs, validation, usage/cost controls и graceful failure. Модель никогда не выбирает `user_id`, не получает SQL/service credential и не выполняет domain write без обычной application authorization, idempotency и требуемого UX-confirmation.
 
@@ -417,7 +417,7 @@ Conceptual Import Session states: uploaded, parsing, review, ready, committing, 
 - Successful records become visible without waiting for every derivative; image state may remain processing.
 - Cancel before Confirm makes no domain change. Cleanup later removes staged assets safely.
 
-The mandatory Source Audit remains a gate for the exact import contract: existing item IDs, photographs, catalog images, front/back/ImageViews, AppearanceVariants, usage notes, naming conventions, exact/possible duplicates and historical wear evidence. Phase 4 defines the safety pipeline only; it does not invent source mapping.
+The mandatory Source Audit is complete and recorded in `docs/BULK_IMPORT_SOURCE_AUDIT.md` plus accepted D-099. The implemented image-only flow is Choose → Prepare → Review → Resolve → Preview → Confirm → Results. Authenticated TUS stores raw ZIP parts in the private `wardrobe-imports` bucket; an isolated worker applies bounded ZIP/image validation, creates only unbound staged media before Confirm and builds the internal `aiw.bulk-import/1` manifest. Filename/timestamp/UUID/hash/similarity remain evidence only. Capability-specific commands seal Preview and commit bounded records only after exact-origin Confirm.
 
 # Import Idempotency
 

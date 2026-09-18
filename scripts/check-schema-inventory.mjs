@@ -17,6 +17,7 @@ const expectedTables = [
   "external_item_identities",
   "idempotency_records",
   "import_asset_links",
+  "import_archive_parts",
   "import_records",
   "import_sessions",
   "import_sources",
@@ -51,8 +52,8 @@ const actualTables = [...allSql.matchAll(/create table public\.([a-z_]+)/g)]
   .sort();
 
 const errors = [];
-if (migrationNames.length !== 13)
-  errors.push(`expected 13 migrations, found ${migrationNames.length}`);
+if (migrationNames.length !== 14)
+  errors.push(`expected 14 migrations, found ${migrationNames.length}`);
 if (JSON.stringify(actualTables) !== JSON.stringify(expectedTables)) {
   errors.push(`table inventory mismatch: ${JSON.stringify(actualTables)}`);
 }
@@ -62,9 +63,7 @@ const securitySql =
   migrations.find(({ name }) => name.endsWith("security_rls_grants.sql"))?.sql ?? "";
 const dynamicRlsBlock = securitySql.match(/do \$security\$([\s\S]+?)\$security\$;/)?.[1] ?? "";
 for (const table of expectedTables) {
-  const directlyEnabled = securitySql.includes(
-    `alter table public.${table} enable row level security`,
-  );
+  const directlyEnabled = allSql.includes(`alter table public.${table} enable row level security`);
   const dynamicallyEnabled = dynamicRlsBlock.includes(`'${table}'`);
   if (!directlyEnabled && !dynamicallyEnabled)
     errors.push(`${table} is missing from RLS enablement`);
@@ -74,5 +73,5 @@ if (errors.length > 0) {
   console.error(`Schema inventory check failed:\n${errors.join("\n")}`);
   process.exitCode = 1;
 } else {
-  console.info("Schema inventory passed: 13 migrations, 31 tables, all tables RLS-enabled.");
+  console.info("Schema inventory passed: 14 migrations, 32 tables, all tables RLS-enabled.");
 }

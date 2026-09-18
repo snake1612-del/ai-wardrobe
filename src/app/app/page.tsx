@@ -43,6 +43,12 @@ export default async function ProtectedAppPage() {
               >
                 Открыть гардероб
               </Link>
+              <Link
+                className="ml-3 inline-flex min-h-12 items-center rounded-lg border border-border-strong px-5 font-semibold"
+                href="/app/import"
+              >
+                Bulk Import
+              </Link>
             </div>
           </AuthStateBoundary>
         </div>
