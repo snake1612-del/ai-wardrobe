@@ -502,7 +502,7 @@ Group rows may show proposed Physical Item identity, image count, appearance cou
 
 Show one stage at a time. Stage header/progress remains sticky; group cards replace dense rows; selected detail opens in the next sheet/page; safe-area footer retains Back/Continue. Parsing preserves layout and uses determinate progress when known.
 
-The following remain **provisional pending Source Audit**: exact mapping controls, grouping density/rules, duplicate resolution, image reconciliation, source/catalog mapping and detailed AppearanceVariant import handling. The design may define their state vocabulary but cannot finalize their interaction or hierarchy from hypothetical source data.
+The completed Source Audit and accepted D-099 bound mapping/grouping, duplicate resolution, image reconciliation, source/catalog proposals and AppearanceVariant handling. Exact controls are implemented and remain subject to implementation/usability validation; raw filenames, timestamps and visual similarity are never authority.
 
 # Settings
 
@@ -871,7 +871,7 @@ These are build-independent visual specifications. Measurements define hierarchy
 
 **States:** Clean, Warning, Error, Skipped, Confirmed and Processing use label/icon/border/surface. Warning may continue; unresolved Error states whether correction or Skip is required. Parsing uses determinate progress when known and stable skeletons otherwise. Results show created/updated/skipped/failed and Retry Failed.
 
-**Provisional boundary:** exact mapping controls, grouping and duplicate rules, image reconciliation, source/catalog mapping and detailed AppearanceVariant import handling cannot be finalized before Source Audit. These specifications approve the staged visual shell only. Compact mode uses one stage at a time and a safe-area footer.
+**D-099 boundary:** exact controls implement Choose → Prepare → Review → Resolve → Preview → Confirm → Results, preserve unresolved evidence and require explicit grouping/variant decisions. These specifications still approve the staged visual shell only until D-099 and implementation are reviewed. Compact mode uses one stage at a time and a safe-area footer.
 
 # Accessibility
 
@@ -959,7 +959,7 @@ Any future product reference must name the specific quality being evaluated—im
 | Analytics becomes dashboard-heavy         | facts look like performance scores                        | one figure per section/card, printed scope/coverage, evidence links, no gauges/traffic lights                |
 | Draft resembles committed content         | accidental trust in unfinished data                       | dedicated Draft Status and Resume treatment; explicit Save/Confirm remains                                   |
 | Status relies on color                    | inaccessible or ambiguous state                           | icon + label + border/surface for every non-default state                                                    |
-| Import appears finalized without evidence | false confidence in hypothetical mapping                  | mark source-dependent controls provisional; Source Audit gates their final design                            |
+| Import appears finalized without evidence | false confidence in hypothetical mapping                  | follow accepted D-099 evidence labels and keep controls subject to implementation/usability validation       |
 | Light-only feels incomplete               | expectation mismatch for some users                       | document the deliberate MVP choice and re-evaluate System theme with full asset/state audit later            |
 
 # Open Visual Questions
@@ -969,13 +969,13 @@ Any future product reference must name the specific quality being evaluated—im
 3. Validate `История` against `Активность` and `Журнал` in a short Russian terminology study; `История` is the Phase 3 recommendation.
 4. Confirm Manrope Cyrillic rendering, required weights and final font delivery/licensing constraints before implementation.
 5. Test the `Внешний вид` / `Ракурс` pattern with the known reversible item and an ordinary front/back-only item.
-6. Use the mandatory Source Audit to validate image background, transparency, crop/scale variation and all source-dependent Bulk Import presentation.
+6. Use the completed Source Audit metadata plus a privacy-safe manual validation session to test image background, crop/scale variation and source-dependent Bulk Import presentation.
 7. Validate outfit composition templates with shoes, trousers, outerwear, one-piece items, small accessories and 7+ item outfits.
 8. Determine from usability testing whether 300-item wardrobes need an explicit density preference; do not add it by default.
 9. Choose exact compact chart forms only after testing narrow screens, color-vision conditions and table equivalence.
 10. Confirm the final device/browser/network visual-validation matrix, including installed PWA, software keyboard and safe areas.
 11. Re-evaluate a System dark theme only after complete image/status/contrast design exists; it is not MVP scope.
-12. Detailed Import mapping, grouping, duplicate resolution, image reconciliation, source/catalog mapping and AppearanceVariant import handling remain provisional pending Source Audit.
+12. Detailed Import controls follow accepted D-099 and remain subject to implementation/usability validation.
 
 # Phase 3 Acceptance Criteria
 
@@ -1022,7 +1022,7 @@ The specification was critically checked and adjusted before completion.
 - **Accessibility:** early low-contrast-neutral risk was corrected with explicit AA text values, Strong Border and Focus tokens, non-color states, Agenda/table equivalents and reduced-motion rules.
 - **Future AI:** the system already supports a restrained `AI‑предложение` state without changing global chrome or making chat foundational.
 - **Scale:** 70 and 300 items are supported by stable multi-column collections/filter rail; 100 outfits by the same collection system; long wear history by month/agenda and progressive lists. Very large outfit compositions and a possible density preference remain validation questions, not silent scope additions.
-- **Bulk Import:** only the approved staged shell is high-fidelity. Source-dependent controls remain explicitly gated by Source Audit.
+- **Bulk Import:** the staged MVP flow is implemented. Source-dependent controls are bounded by accepted D-099 and remain gated by implementation/usability validation.
 - **Scope audit:** no application or technical architecture artifact was created, and no approved Phase 1/2 decision was rewritten.
 
 Result: the Phase 3 visual/design-system package is approved and complete. The listed real-asset, narrow-screen, terminology and scale validations remain explicit downstream gates and do not reopen the approved visual architecture.

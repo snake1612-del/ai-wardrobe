@@ -1077,12 +1077,14 @@ MVP считается действительно готовым к исполь
 
 Результат аудита определяет поддерживаемый MVP import contract, mapping/preview cases и test fixture, но не меняет утверждённое требование: минимальный AppearanceVariant flow входит в MVP.
 
+Аудит выполнен 2026-09-18. `docs/BULK_IMPORT_SOURCE_AUDIT.md` и accepted D-099 фиксируют `legacy-wardrobe-image-set/v1`: два audited image-only ZIP рассматриваются как один set, но не содержат manifest, stable item IDs, source-to-catalog mapping, item metadata или wear evidence. Поэтому реализованный raw-input flow требует explicit Resolve; filename/timestamp/UUID/hash/similarity не становятся item identity, а до sealed Confirm нет production-domain writes.
+
 ## Open Questions
 
 Эти вопросы не блокируют Phase 1, но должны быть закрыты до соответствующего design/implementation gate:
 
-1. Каковы точный формат, объём и качество связей между item IDs, source/catalog images, front/back, AppearanceVariants, usage notes, naming conventions и возможными дублями в реальном bulk-import наборе? Это закрывается обязательным source audit до окончательного Bulk Import UX.
-2. Есть ли переносимая историческая wear data, либо usage notes остаются только текстом? Нельзя превращать заметки в события без подтверждения.
+1. Source format/volume/linkage вопрос закрыт accepted D-099; raw set image-only и требует manual Resolve из-за отсутствия item IDs/mapping.
+2. Историческая wear data и usage notes в audited set отсутствуют; нельзя создавать WearEvents без отдельного доказательства.
 3. Как моделировать физические комплекты (например, костюм): одна вещь с частями или несколько связанных физических items? Default — отдельно отслеживаемые части являются отдельными items.
 4. Какова продуктовая политика individual hard delete при наличии historical events: сохраняемый обезличенный snapshot, tombstone или пересчёт истории? Account deletion при этом всегда удаляет весь пользовательский набор по заявленной политике.
 5. Каковы scope и SLA удаления из operational storage/backups? Это должно быть утверждено до приёма реальных пользовательских данных в MVP. Допустимые AI providers, processor retention и data regions закрываются дополнительно до AI V2.

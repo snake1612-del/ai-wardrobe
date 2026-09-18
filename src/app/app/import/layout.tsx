@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { resolveAccountContext } from "@/modules/account/server/account-context";
 import { Surface } from "@/ui/surface";
 
-export default async function WardrobeLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function ImportLayout({ children }: Readonly<{ children: ReactNode }>) {
   const resolution = await resolveAccountContext();
   if (resolution.status === "anonymous") redirect("/auth?error=invalid-session");
   if (resolution.status === "unavailable") {
@@ -21,10 +21,9 @@ export default async function WardrobeLayout({ children }: Readonly<{ children: 
       </main>
     );
   }
-
   return (
     <main id="main-content" className="mx-auto min-h-screen max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
-      <nav aria-label="Гардероб" className="mb-6 flex flex-wrap items-center gap-4">
+      <nav aria-label="Импорт" className="mb-6 flex flex-wrap items-center gap-4">
         <Link href="/app" className="font-semibold text-accent underline-offset-4 hover:underline">
           AI Wardrobe
         </Link>

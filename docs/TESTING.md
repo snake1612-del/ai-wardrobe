@@ -1,6 +1,6 @@
 # AI Wardrobe — Testing
 
-**Status:** Phase 8 approved: YES; Phase 9 gate: PASS, external review: APPROVE WITH WARNINGS, approval: YES; production deployment: NOT RUN; Phase 10: not started.
+**Status:** Phase 8 approved: YES; Phase 9 approved: YES — APPROVE WITH WARNINGS; Phase 10 approved: YES — `APPROVE WITH WARNINGS`; production deployment: NOT RUN.
 
 # Testing Principles
 
@@ -15,11 +15,11 @@ Tests prove server and database boundaries, not the visibility of a UI control. 
 
 # Unit Tests
 
-Vitest executes `tests/unit`. Coverage includes environment validation, stable application errors, structured-log redaction, safe auth and Wardrobe return-path allowlisting, canonical exact-origin validation, persistent owner-bound browser-state cleanup, ClothingItem validation and sparse comma-separated metadata normalization. Run `pnpm test`.
+Vitest executes `tests/unit`. Coverage includes environment validation, stable application errors, structured-log redaction, safe auth and Wardrobe return-path allowlisting, canonical exact-origin validation, persistent owner-bound browser-state cleanup, ClothingItem/media validation and Bulk Import parser, normalization, issue, grouping, variant/view and resolution invariants. Run `pnpm test`.
 
 # Database Integration Tests
 
-pgTAP SQL under `supabase/tests/database` executes against the local migrated Supabase database. It verifies the 31-table inventory, UUID foundation, `pg_trgm`, search, composite ownership, AppearanceVariant compatibility, Outfit/Wear uniqueness, scoped external IDs, media ownership, RLS/grants, account-bootstrap idempotency and Phase 8 wardrobe aggregate commands.
+pgTAP SQL under `supabase/tests/database` executes against the local migrated Supabase database. It verifies the 32-table inventory, UUID foundation, `pg_trgm`, search, composite ownership, AppearanceVariant compatibility, Outfit/Wear uniqueness, scoped external IDs, media/import ownership, RLS/grants, account-bootstrap idempotency and capability-specific Wardrobe, private-media and Bulk Import commands.
 
 Run `pnpm db:start`, `pnpm db:reset`, then `pnpm test:db`.
 
@@ -39,22 +39,22 @@ The test changes to the real `authenticated` role and supplies a synthetic JWT s
 The database release gate is:
 
 ```text
-fresh local stack → replay all twelve migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
+fresh local stack → replay all fourteen migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
 ```
 
 CI repeats this from an empty runner. No manual dashboard step is accepted as schema history.
 
 # Browser Smoke Tests
 
-Playwright runs the compiled application in desktop and mobile Chromium. In addition to the complete Phase 7 auth/session suite, Phase 8 covers create/read/edit, favorite, archive with visible Undo/restore, deterministic tag search, saved return state, sparse AppearanceVariant labels, hostile-Origin replay against persisted data, empty state and known-ID User A/User B isolation. Unit coverage verifies that progressive result limits are normalized and bounded; the UI exposes a keyboard-accessible `Показать ещё` fallback.
+Playwright runs the compiled application in desktop and mobile Chromium. In addition to the Phase 7–9 auth/Wardrobe/private-media suites, Phase 10 covers responsive Choose/upload progress, Prepare polling, Review/Resolve, sealed Preview/Confirm, Results, partial retry, hostile-Origin denial and known-ID User A/User B IDOR isolation.
 
 # Accessibility Tests
 
-`@axe-core/playwright` checks the public foundation shell, auth page and Wardrobe empty/grid, mobile filter dialog, new, detail and edit states in both viewports. Semantic HTML, labelled fields, native modal filtering, pending/error feedback, `lang="ru"`, keyboard focus, skip navigation and reduced-motion styling remain manual review companions.
+`@axe-core/playwright` checks the public foundation shell, auth page, Wardrobe/media states and the Bulk Import review flow in desktop/mobile viewports. Semantic HTML, labelled fields, pending/error feedback, `lang="ru"`, keyboard focus, skip navigation and reduced-motion styling remain manual review companions.
 
 # Security Regression Tests
 
-Automated definitions cover known-ID and search cross-user reads, account API scope, missing anonymous/direct/operational grants, cross-account FK injection, privileged bootstrap denial/idempotency, canonical redirect/origin policy, invalid sessions, recovery enumeration resistance, private/no-store responses, persistent owner binding and secret patterns. Definitions are not reported passing until their command completes. Private Storage, uploads, export/deletion and product-object IDOR remain future feature gates.
+Automated definitions cover known-ID and search cross-user reads, account/API scope, missing anonymous/direct/operational grants, cross-account FK injection, privileged capability denial/idempotency, canonical redirect/origin policy, invalid sessions, recovery enumeration resistance, private/no-store responses, Storage isolation, import hostile-Origin/IDOR and secret/log/path patterns. Definitions are not reported passing until their command completes. Export/deletion and later product-object IDOR remain future feature gates.
 
 # Fixtures
 
@@ -66,7 +66,7 @@ The application job runs frozen install, formatting, lint, typecheck, unit tests
 
 # What Is Deferred
 
-OAuth/MFA, production email, private Storage, upload/image adversarial fixtures, import archives/Bulk Import, onboarding, Outfit/Wear/Calendar/Analytics, background workers and performance budgets remain deferred. Source Audit remains mandatory before real import fixtures or detailed Bulk Import behavior.
+OAuth/MFA, production email, onboarding, Outfit/Wear/Calendar/Analytics, production worker scheduling and performance budgets remain deferred. Phase 10 tests use only the fully fictional executable ZIP fixture; real source bytes, names, notes and images never enter Git or CI.
 
 # Phase-specific Release Gates
 
@@ -96,4 +96,16 @@ Worker tests cover job deduplication, leases, expired-lease recovery, bounded re
 
 On 2026-09-17 the Phase 9 local gate passed: formatting, lint and typecheck; 65/65 unit assertions; clean replay of all 13 migrations; DB lint with no schema errors; 146/146 pgTAP assertions; real Storage API integration with authenticated TUS transport retry, User A/User B and anonymous denial, overwrite/original-read/rendition-write denial and duplicate completion; byte-for-byte stable generated database types; 36/36 Playwright desktop/mobile tests including accessibility and private delivery headers; repository plus 47-file browser-bundle secret scan; 31-table RLS schema inventory; production build; and `git diff --check`.
 
-The independent implementation review found and corrected completion replay, processing-retry, rendition-existence, cleanup-FK, gallery mutation serialization and primary-removal/reorder semantics defects before the final gate. No blocking findings remain. The external review outcome is `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 9 on 2026-09-18. Hosted Storage/production scheduling remain untested, general antivirus remains outside the allowlisted manual-image scope, and the stable type generator retains its known nonfatal `MaxListenersExceededWarning`. Production deployment is NOT RUN and Phase 10 is NOT STARTED.
+The independent implementation review found and corrected completion replay, processing-retry, rendition-existence, cleanup-FK, gallery mutation serialization and primary-removal/reorder semantics defects before the final gate. No blocking findings remain. The external review outcome is `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 9 on 2026-09-18. Hosted Storage/production scheduling remain untested, general antivirus remains outside the allowlisted manual-image scope, and the stable type generator retains its known nonfatal `MaxListenersExceededWarning`. Production deployment is NOT RUN.
+
+# Phase 10 Bulk Import Gate
+
+The real two-part source set was audited read-only outside the repository. Both ZIP parts passed integrity and unsafe-entry preflight; all 255 JPEG/PNG files decoded, no exact duplicates or corrupt assets were found, and no private filename, image, EXIF value or note entered Git. The source has no manifest, stable item ID, source/catalog mapping or historical wear evidence. Accepted D-099 and `docs/BULK_IMPORT_SOURCE_AUDIT.md` define the single `legacy-wardrobe-image-set/v1` adapter, archive limits, bounded issues, manual Resolve boundary, sealed Confirm, retention and sanitized fixture specification.
+
+Implementation coverage now includes archive adversarial cases, canonical hashing, no-pre-Confirm domain-write proof, anonymous/User A/User B isolation, hostile-Origin/IDOR, stale preview conflicts, duplicate completion/Confirm, worker lease/retry, Storage-API cleanup, accessibility and secret/log/path scans. A fully fictional executable ZIP fixture covers ordinary views, AppearanceVariant, physical set, duplicate candidates, unresolved/corrupt/missing cases, explicit update conflict and a usage note that never becomes WearEvent.
+
+Migration 14 adds the private `wardrobe-imports` bucket, exact-path authenticated INSERT policy, `import_archive_parts` and service-role-only import capabilities with empty `search_path`. Real local Storage integration exercises authenticated TUS retry, overwrite denial, anonymous/cross-account isolation, completion replay and original-read denial.
+
+On 2026-09-18 the Phase 10 local gate passed: formatting, lint and typecheck; 80/80 unit assertions; clean replay of all 14 migrations; DB lint with no schema errors; 208/208 pgTAP assertions; real Storage API integration; byte-for-byte stable generated database types; 40/40 Playwright desktop/mobile tests including axe accessibility, hostile-Origin and known-ID isolation; 32-table RLS schema inventory; repository plus 59-file browser-bundle secret scan; production build; and `git diff --check`.
+
+The independent review found and corrected stale-worker/cancellation, terminal cleanup, skipped-UUID casting, variant/media binding conflicts, inactive category/account/archived-target checks, ZIP parser bounds, blind Review, fabricated default names, declarative-only fixture coverage, Review media-readiness polling and desktop/mobile E2E state collisions before the final gate. No P0/P1/P2 remains open. Outcome: `APPROVE WITH WARNINGS`; the user explicitly approved Phase 10 on 2026-09-18. Hosted Storage/production scheduling were not validated; compressed archive parts are currently held in worker memory; generated type output remains stable despite the inherited nonfatal `MaxListenersExceededWarning`; source identity remains manual because the real archive has no stable item IDs. Production deployment and Phase 11 are NOT RUN.

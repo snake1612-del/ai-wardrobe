@@ -7,14 +7,14 @@ import { randomUUID } from "node:crypto";
 test.describe.configure({ mode: "serial" });
 
 const suffix = randomUUID();
-const emailA = `phase7-a-${suffix}@example.test`;
-const emailB = `phase7-b-${suffix}@example.test`;
+const emailA = (project: string) => `phase7-a-${project}-${suffix}@example.test`;
+const emailB = (project: string) => `phase7-b-${project}-${suffix}@example.test`;
 const passwordA = "phase7-password-a";
 const passwordB = "phase7-password-b";
 const replacementPassword = "phase7-password-a-replaced";
 const mailpitUrl = "http://127.0.0.1:54324";
-let accountA = "";
-let authCookieName = "";
+const accountIds = new Map<string, string>();
+const authCookieNames = new Map<string, string>();
 
 type StoredAuthSession = {
   access_token: string;
@@ -38,16 +38,36 @@ function adminClient() {
 
 async function removeIdentity(userId: string) {
   const admin = adminClient();
-  const { data: account } = await admin
+  const { data: account, error: accountLookupError } = await admin
     .from("accounts")
     .select("id")
     .eq("auth_user_id", userId)
     .maybeSingle();
+  if (accountLookupError) throw accountLookupError;
   if (account) {
-    await admin.from("account_preferences").delete().eq("account_id", account.id);
-    await admin.from("accounts").delete().eq("id", account.id);
+    const { error: preferencesDeleteError } = await admin
+      .from("account_preferences")
+      .delete()
+      .eq("account_id", account.id);
+    if (preferencesDeleteError) throw preferencesDeleteError;
+
+    const { error: accountDeleteError } = await admin
+      .from("accounts")
+      .delete()
+      .eq("id", account.id);
+    if (accountDeleteError) throw accountDeleteError;
   }
-  await admin.auth.admin.deleteUser(userId);
+
+  const { error: identityDeleteError } = await admin.auth.admin.deleteUser(userId);
+  if (identityDeleteError) throw identityDeleteError;
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (error) throw error;
+    if (!data.users.some((candidate) => candidate.id === userId)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("Deleted test identity remained visible to the Auth admin API");
 }
 
 async function signUp(page: Page, email: string, password: string) {
@@ -142,11 +162,12 @@ async function waitForRecoveryLink(email: string): Promise<string> {
   throw new Error(`Recovery email was not delivered for ${email}`);
 }
 
-test.afterAll(async () => {
+test.afterAll(async ({}, testInfo) => {
+  const project = testInfo.project.name;
   const admin = adminClient();
   const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   for (const user of data.users.filter(
-    (candidate) => candidate.email === emailA || candidate.email === emailB,
+    (candidate) => candidate.email === emailA(project) || candidate.email === emailB(project),
   )) {
     await removeIdentity(user.id);
   }
@@ -160,45 +181,49 @@ test("anonymous visitors cannot read the protected shell", async ({ page }) => {
 
 test("User A signs up, receives an isolated account, and logout clears local state", async ({
   page,
-}) => {
-  await signUp(page, emailA, passwordA);
+}, testInfo) => {
+  const project = testInfo.project.name;
+  await signUp(page, emailA(project), passwordA);
   await expect(page.getByText("Защищённая сессия")).toBeVisible();
   const response = await page.request.get("/api/account");
   expect(response.ok()).toBeTruthy();
   expect(response.headers()["cache-control"]).toContain("private");
   expect(response.headers()["cache-control"]).toContain("no-store");
   const payload = await response.json();
-  accountA = payload.account.id;
-  expect(accountA).toBeTruthy();
+  accountIds.set(project, payload.account.id);
+  expect(accountIds.get(project)).toBeTruthy();
   await page.evaluate(() => localStorage.setItem("ai-wardrobe:e2e", "private"));
   await logout(page);
   expect(await page.evaluate(() => localStorage.getItem("ai-wardrobe:e2e"))).toBeNull();
 });
 
-test("User B cannot select User A account through client input", async ({ page }) => {
-  await signUp(page, emailB, passwordB);
+test("User B cannot select User A account through client input", async ({ page }, testInfo) => {
+  const project = testInfo.project.name;
+  const accountA = accountIds.get(project) ?? "";
+  await signUp(page, emailB(project), passwordB);
   const response = await page.request.get(`/api/account?account_id=${accountA}`);
   const payload = await response.json();
   expect(response.ok()).toBeTruthy();
   expect(payload.account.id).not.toBe(accountA);
-  expect(payload.account.email).toBe(emailB);
+  expect(payload.account.email).toBe(emailB(project));
   await logout(page);
 });
 
 test("same-profile account switches clear state across tabs and closed tabs", async ({
   page,
   context,
-}) => {
-  await login(page, emailA, passwordA);
+}, testInfo) => {
+  const project = testInfo.project.name;
+  await login(page, emailA(project), passwordA);
   await page.evaluate(() => localStorage.setItem("ai-wardrobe:same-tab", "user-a-private"));
-  await login(page, emailB, passwordB);
+  await login(page, emailB(project), passwordB);
   expect(await page.evaluate(() => localStorage.getItem("ai-wardrobe:same-tab"))).toBeNull();
 
-  await login(page, emailA, passwordA);
+  await login(page, emailA(project), passwordA);
   await page.evaluate(() => localStorage.setItem("ai-wardrobe:closed-tab", "user-a-private"));
   const newTab = await context.newPage();
   await newTab.goto("/app");
-  await expect(newTab.getByText(emailA)).toBeVisible();
+  await expect(newTab.getByText(emailA(project))).toBeVisible();
   expect(await newTab.evaluate(() => localStorage.getItem("ai-wardrobe:closed-tab"))).toBe(
     "user-a-private",
   );
@@ -206,7 +231,7 @@ test("same-profile account switches clear state across tabs and closed tabs", as
   await newTab.close();
 
   const afterClose = await context.newPage();
-  await login(afterClose, emailB, passwordB);
+  await login(afterClose, emailB(project), passwordB);
   expect(
     await afterClose.evaluate(() => localStorage.getItem("ai-wardrobe:closed-tab")),
   ).toBeNull();
@@ -216,11 +241,12 @@ test("same-profile account switches clear state across tabs and closed tabs", as
 test("persisted profile state is isolated after a browser-context restart", async ({
   browser,
   baseURL,
-}) => {
+}, testInfo) => {
+  const project = testInfo.project.name;
   expect(baseURL).toBeTruthy();
   const firstContext = await browser.newContext({ baseURL });
   const firstPage = await firstContext.newPage();
-  await login(firstPage, emailA, passwordA);
+  await login(firstPage, emailA(project), passwordA);
   await firstPage.evaluate(() => localStorage.setItem("ai-wardrobe:restart", "user-a-private"));
   const storageState = await firstContext.storageState();
   await firstContext.close();
@@ -228,7 +254,7 @@ test("persisted profile state is isolated after a browser-context restart", asyn
   const restartedContext = await browser.newContext({ baseURL, storageState });
   try {
     const restartedPage = await restartedContext.newPage();
-    await login(restartedPage, emailB, passwordB);
+    await login(restartedPage, emailB(project), passwordB);
     expect(
       await restartedPage.evaluate(() => localStorage.getItem("ai-wardrobe:restart")),
     ).toBeNull();
@@ -238,7 +264,8 @@ test("persisted profile state is isolated after a browser-context restart", asyn
   }
 });
 
-test("a hostile Origin cannot invoke the real login Server Action", async ({ page }) => {
+test("a hostile Origin cannot invoke the real login Server Action", async ({ page }, testInfo) => {
+  const project = testInfo.project.name;
   let intercepted = false;
   await page.route("**/*", async (route) => {
     const request = route.request();
@@ -252,7 +279,7 @@ test("a hostile Origin cannot invoke the real login Server Action", async ({ pag
 
   await page.goto("/auth");
   const form = page.locator("form").filter({ has: page.getByRole("heading", { name: "Войти" }) });
-  await form.getByLabel("Email").fill(emailA);
+  await form.getByLabel("Email").fill(emailA(project));
   await form.getByLabel("Пароль").fill(passwordA);
   await form.getByRole("button", { name: "Войти" }).click();
   await expect.poll(() => intercepted).toBe(true);
@@ -260,18 +287,21 @@ test("a hostile Origin cannot invoke the real login Server Action", async ({ pag
   expect((await page.request.get("/api/account")).status()).toBe(401);
 });
 
-test("real recovery email completes PKCE callback and replaces the password", async ({ page }) => {
+test("real recovery email completes PKCE callback and replaces the password", async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
   await page.goto("/auth/recovery");
   await page.getByLabel("Email").fill("unknown@example.test");
   await page.getByRole("button", { name: "Отправить ссылку" }).click();
   const unknownMessage = await page.getByRole("status").textContent();
 
   await page.goto("/auth/recovery");
-  await page.getByLabel("Email").fill(emailA);
+  await page.getByLabel("Email").fill(emailA(project));
   await page.getByRole("button", { name: "Отправить ссылку" }).click();
   await expect(page.getByRole("status")).toHaveText(unknownMessage ?? "");
 
-  const recoveryLink = await waitForRecoveryLink(emailA);
+  const recoveryLink = await waitForRecoveryLink(emailA(project));
   const callbackRequest = page.waitForRequest((request) => {
     const url = new URL(request.url());
     return url.pathname === "/auth/callback" && url.searchParams.has("code");
@@ -285,7 +315,7 @@ test("real recovery email completes PKCE callback and replaces the password", as
   await expect(page).toHaveURL(/\/app$/u);
   await logout(page);
 
-  await login(page, emailA, replacementPassword);
+  await login(page, emailA(project), replacementPassword);
   await logout(page);
 });
 
@@ -293,11 +323,12 @@ test("expired access tokens rotate cookies and invalid refresh tokens lose acces
   page,
   context,
   baseURL,
-}) => {
+}, testInfo) => {
+  const project = testInfo.project.name;
   expect(baseURL).toBeTruthy();
-  await login(page, emailA, replacementPassword);
+  await login(page, emailA(project), replacementPassword);
   const before = await readAuthSession(context);
-  authCookieName = before.baseName;
+  authCookieNames.set(project, before.baseName);
   await writeAuthSession(context, baseURL ?? "", before.baseName, {
     ...before.session,
     expires_at: 1,
@@ -307,7 +338,7 @@ test("expired access tokens rotate cookies and invalid refresh tokens lose acces
   const protectedResponse = await page.goto("/app");
   expect(protectedResponse?.headers()["cache-control"]).toContain("private");
   expect(protectedResponse?.headers()["cache-control"]).toContain("no-store");
-  await expect(page.getByText(emailA)).toBeVisible();
+  await expect(page.getByText(emailA(project))).toBeVisible();
   const refreshed = await readAuthSession(context);
   expect(refreshed.session.access_token).not.toBe(before.session.access_token);
   expect(refreshed.session.refresh_token).not.toBe(before.session.refresh_token);
@@ -321,28 +352,31 @@ test("expired access tokens rotate cookies and invalid refresh tokens lose acces
   });
   await page.goto("/app");
   await expect(page).toHaveURL(/\/auth\?next=%2Fapp$/u);
-  await expect(page.getByText(emailA)).toHaveCount(0);
+  await expect(page.getByText(emailA(project))).toHaveCount(0);
   expect((await page.request.get("/api/account")).status()).toBe(401);
 
-  await login(page, emailB, passwordB);
+  await login(page, emailB(project), passwordB);
   expect(await page.evaluate(() => localStorage.getItem("ai-wardrobe:expired"))).toBeNull();
   await logout(page);
 });
 
-test("a revoked User A session is isolated before User B binds", async ({ page }) => {
-  await login(page, emailA, replacementPassword);
+test("a revoked User A session is isolated before User B binds", async ({ page }, testInfo) => {
+  const project = testInfo.project.name;
+  await login(page, emailA(project), replacementPassword);
   await page.evaluate(() => localStorage.setItem("ai-wardrobe:revoked", "user-a-private"));
 
   const admin = adminClient();
   const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const user = data.users.find((candidate) => candidate.email === emailA);
+  const user = data.users.find((candidate) => candidate.email === emailA(project));
   expect(user).toBeTruthy();
   await removeIdentity(user?.id ?? "");
 
-  await page.goto("/app");
-  await expect(page).toHaveURL(/\/auth\?next=%2Fapp$/u);
-  await expect(page.getByText(emailA)).toHaveCount(0);
-  await login(page, emailB, passwordB);
+  await expect(async () => {
+    await page.goto("/app");
+    expect(page.url()).toMatch(/\/auth\?next=%2Fapp$/u);
+  }).toPass({ timeout: 15_000 });
+  await expect(page.getByText(emailA(project))).toHaveCount(0);
+  await login(page, emailB(project), passwordB);
   expect(await page.evaluate(() => localStorage.getItem("ai-wardrobe:revoked"))).toBeNull();
   await logout(page);
 });
@@ -351,7 +385,8 @@ test("callback redirects ignore spoofed headers and malformed sessions expose no
   page,
   context,
   baseURL,
-}) => {
+}, testInfo) => {
+  const project = testInfo.project.name;
   const callback = await page.request.get("/auth/callback?code=invalid-code", {
     headers: {
       host: "evil.example",
@@ -365,11 +400,16 @@ test("callback redirects ignore spoofed headers and malformed sessions expose no
 
   await context.clearCookies();
   await context.addCookies([
-    { name: authCookieName, value: "invalid-session", domain: "127.0.0.1", path: "/" },
+    {
+      name: authCookieNames.get(project) ?? "missing-auth-cookie",
+      value: "invalid-session",
+      domain: "127.0.0.1",
+      path: "/",
+    },
   ]);
   await page.goto("/app");
   await expect(page).toHaveURL(/\/auth\?next=%2Fapp$/u);
-  await expect(page.getByText(emailA)).toHaveCount(0);
+  await expect(page.getByText(emailA(project))).toHaveCount(0);
   const response = await page.request.get("/api/account");
   expect(response.status()).toBe(401);
   expect(await response.json()).toEqual({ error: "unauthenticated" });

@@ -644,37 +644,102 @@ export type Database = {
           },
         ]
       }
+      import_archive_parts: {
+        Row: {
+          account_id: string
+          content_hash: string | null
+          created_at: string
+          declared_byte_size: number
+          failure_code: string | null
+          id: string
+          import_session_id: string
+          observed_byte_size: number | null
+          part_ordinal: number
+          state: string
+          storage_bucket: string
+          storage_object_key: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          content_hash?: string | null
+          created_at?: string
+          declared_byte_size: number
+          failure_code?: string | null
+          id: string
+          import_session_id: string
+          observed_byte_size?: number | null
+          part_ordinal: number
+          state?: string
+          storage_bucket?: string
+          storage_object_key: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          content_hash?: string | null
+          created_at?: string
+          declared_byte_size?: number
+          failure_code?: string | null
+          id?: string
+          import_session_id?: string
+          observed_byte_size?: number | null
+          part_ordinal?: number
+          state?: string
+          storage_bucket?: string
+          storage_object_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_archive_parts_session_fk"
+            columns: ["account_id", "import_session_id"]
+            isOneToOne: false
+            referencedRelation: "import_sessions"
+            referencedColumns: ["account_id", "id"]
+          },
+        ]
+      }
       import_asset_links: {
         Row: {
           account_id: string
           created_at: string
+          disposition: string
           id: string
           import_record_id: string | null
           import_session_id: string
           media_asset_id: string
+          proposed_primary: boolean
           proposed_role: string | null
+          proposed_variant_key: string | null
           proposed_view: string | null
           source_reference: string
         }
         Insert: {
           account_id: string
           created_at?: string
+          disposition?: string
           id?: string
           import_record_id?: string | null
           import_session_id: string
           media_asset_id: string
+          proposed_primary?: boolean
           proposed_role?: string | null
+          proposed_variant_key?: string | null
           proposed_view?: string | null
           source_reference: string
         }
         Update: {
           account_id?: string
           created_at?: string
+          disposition?: string
           id?: string
           import_record_id?: string | null
           import_session_id?: string
           media_asset_id?: string
+          proposed_primary?: boolean
           proposed_role?: string | null
+          proposed_variant_key?: string | null
           proposed_view?: string | null
           source_reference?: string
         }
@@ -802,13 +867,16 @@ export type Database = {
       import_sessions: {
         Row: {
           account_id: string
+          cleanup_after: string | null
           confirmed_at: string | null
           confirmed_manifest_hash: string | null
           confirmed_revision: number | null
           created_at: string
+          expires_at: string
           failure_code: string | null
           id: string
           import_source_id: string
+          preview_manifest_hash: string | null
           preview_revision: number
           source_schema_version: string | null
           state: string
@@ -818,13 +886,16 @@ export type Database = {
         }
         Insert: {
           account_id: string
+          cleanup_after?: string | null
           confirmed_at?: string | null
           confirmed_manifest_hash?: string | null
           confirmed_revision?: number | null
           created_at?: string
+          expires_at?: string
           failure_code?: string | null
           id?: string
           import_source_id: string
+          preview_manifest_hash?: string | null
           preview_revision?: number
           source_schema_version?: string | null
           state?: string
@@ -834,13 +905,16 @@ export type Database = {
         }
         Update: {
           account_id?: string
+          cleanup_after?: string | null
           confirmed_at?: string | null
           confirmed_manifest_hash?: string | null
           confirmed_revision?: number | null
           created_at?: string
+          expires_at?: string
           failure_code?: string | null
           id?: string
           import_source_id?: string
+          preview_manifest_hash?: string | null
           preview_revision?: number
           source_schema_version?: string | null
           state?: string
@@ -1655,6 +1729,33 @@ export type Database = {
           account_state: string
         }[]
       }
+      build_import_preview: {
+        Args: {
+          p_account_id: string
+          p_expected_version: number
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      cancel_import_session: {
+        Args: {
+          p_account_id: string
+          p_expected_version: number
+          p_session_id: string
+        }
+        Returns: number
+      }
+      claim_import_job: {
+        Args: { p_lease_seconds?: number; p_worker_id: string }
+        Returns: {
+          account_id: string
+          attempt_count: number
+          import_session_id: string
+          job_id: string
+          job_type: string
+          payload: Json
+        }[]
+      }
       claim_media_job: {
         Args: { p_lease_seconds?: number; p_worker_id: string }
         Returns: {
@@ -1666,6 +1767,19 @@ export type Database = {
           media_asset_id: string
           payload: Json
         }[]
+      }
+      commit_import_record: {
+        Args: { p_job_id: string; p_record_id: string; p_worker_id: string }
+        Returns: Json
+      }
+      complete_import_archive_part: {
+        Args: {
+          p_account_id: string
+          p_observed_byte_size: number
+          p_part_id: string
+          p_session_id: string
+        }
+        Returns: Json
       }
       complete_media_upload: {
         Args: {
@@ -1680,6 +1794,28 @@ export type Database = {
           job_id: string
           processing_state: string
         }[]
+      }
+      confirm_import_session: {
+        Args: {
+          p_account_id: string
+          p_expected_manifest_hash: string
+          p_expected_revision: number
+          p_expected_version: number
+          p_idempotency_key: string
+          p_request_hash: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      create_import_session_intent: {
+        Args: {
+          p_account_id: string
+          p_idempotency_key: string
+          p_parts: Json
+          p_request_hash: string
+          p_session_id: string
+        }
+        Returns: Json
       }
       create_media_upload_intent: {
         Args: {
@@ -1703,6 +1839,15 @@ export type Database = {
           storage_object_key: string
         }[]
       }
+      fail_import_job: {
+        Args: {
+          p_failure_code: string
+          p_job_id: string
+          p_retry_delay_seconds?: number
+          p_worker_id: string
+        }
+        Returns: boolean
+      }
       fail_media_job: {
         Args: {
           p_failure_code: string
@@ -1712,8 +1857,38 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_import_cleanup: {
+        Args: {
+          p_deleted_part_ids: string[]
+          p_job_id: string
+          p_worker_id: string
+        }
+        Returns: boolean
+      }
+      finalize_import_commit: {
+        Args: { p_job_id: string; p_worker_id: string }
+        Returns: Json
+      }
       finalize_media_cleanup: {
         Args: { p_job_id: string; p_worker_id: string }
+        Returns: boolean
+      }
+      finish_import_prepare: {
+        Args: {
+          p_job_id: string
+          p_part_hashes: Json
+          p_summary: Json
+          p_worker_id: string
+        }
+        Returns: number
+      }
+      record_import_record_failure: {
+        Args: {
+          p_failure_code: string
+          p_job_id: string
+          p_record_id: string
+          p_worker_id: string
+        }
         Returns: boolean
       }
       record_media_processing: {
@@ -1743,6 +1918,23 @@ export type Database = {
           p_item_id: string
         }
         Returns: number
+      }
+      replace_import_resolution: {
+        Args: {
+          p_account_id: string
+          p_expected_version: number
+          p_resolution: Json
+          p_session_id: string
+        }
+        Returns: number
+      }
+      retry_import_commit: {
+        Args: {
+          p_account_id: string
+          p_expected_version: number
+          p_session_id: string
+        }
+        Returns: Json
       }
       retry_media_asset: {
         Args: {
@@ -1821,6 +2013,20 @@ export type Database = {
           item_version: number
           lifecycle_state: string
         }[]
+      }
+      stage_import_asset: {
+        Args: {
+          p_asset_id: string
+          p_byte_size: number
+          p_content_hash: string
+          p_job_id: string
+          p_mime_type: string
+          p_origin_proposal: string
+          p_source_reference: string
+          p_storage_object_key: string
+          p_worker_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

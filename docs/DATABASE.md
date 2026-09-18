@@ -1,14 +1,14 @@
 # AI Wardrobe — Database / Data Model
 
-**Phase:** 5 approved data model with Phase 6–8 implementation appendices
-**Status:** Phase 8 local database gate passed; external-review findings remediated
+**Phase:** 5 approved data model with Phase 6–10 implementation appendices
+**Status:** Phase 9 approved with warnings; Phase 10 approved with warnings, migration 14 gate PASS, external review `APPROVE WITH WARNINGS`
 **Baseline:** Approved PRD, UX, Design System, Architecture, Security and Decisions D-001–D-088  
 **Date:** 2026-09-17
 **Artifact type:** approved design specification plus local migration representation
 
 # Executive Data Model Summary
 
-The MVP model contains **31 application tables** in PostgreSQL, plus the provider-owned conceptual `auth.users` identity relation. A separate `accounts` row is the durable personal ownership scope. In MVP one Auth identity maps one-to-one to one account, but all personal domain roots reference `accounts.id`; future Household access can therefore be added through grants without changing the owner of existing rows.
+The approved core model contains 31 domain/operations tables, and the executable Phase 10 schema adds one bounded staging table, `import_archive_parts`, for **32 application tables** in PostgreSQL. The provider-owned conceptual `auth.users` identity relation is separate. A durable `accounts` row remains the personal ownership scope.
 
 Internal IDs use PostgreSQL `uuid` with `gen_random_uuid()` UUIDv4 defaults. Human-visible reference codes and owner/source-scoped external import identifiers are separate values and never primary keys. UUIDv7 may later replace the generation method without changing column types, but it is not required by the MVP schema or assumed before the actual Supabase PostgreSQL version is selected.
 
@@ -107,17 +107,17 @@ future only: another identity → membership/grant → selected resource
 
 # Entity Inventory
 
-| Domain                       | Tables                                                                                                  |  Count |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------- | -----: |
-| Identity / preferences       | `accounts`, `account_preferences`                                                                       |      2 |
-| Reference / taxonomy         | `categories`, `colors`, `seasons`, `tags`                                                               |      4 |
-| Wardrobe / provenance        | `clothing_items`, three item join tables, `item_metadata_evidence`, `appearance_variants`               |      6 |
-| Images                       | `media_assets`, `media_bindings`, `media_renditions`                                                    |      3 |
-| Outfits                      | `outfits`, `outfit_items`, `outfit_seasons`, `outfit_tags`                                              |      4 |
-| Wear                         | `wear_events`, `wear_event_items`                                                                       |      2 |
-| Import                       | `import_sources`, `external_item_identities`, `import_sessions`, `import_records`, `import_asset_links` |      5 |
-| Operations / lifecycle       | `jobs`, `idempotency_records`, `audit_events`, `export_requests`, `account_deletion_requests`           |      5 |
-| **Total application tables** |                                                                                                         | **31** |
+| Domain                       | Tables                                                                                                                          |  Count |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -----: |
+| Identity / preferences       | `accounts`, `account_preferences`                                                                                               |      2 |
+| Reference / taxonomy         | `categories`, `colors`, `seasons`, `tags`                                                                                       |      4 |
+| Wardrobe / provenance        | `clothing_items`, three item join tables, `item_metadata_evidence`, `appearance_variants`                                       |      6 |
+| Images                       | `media_assets`, `media_bindings`, `media_renditions`                                                                            |      3 |
+| Outfits                      | `outfits`, `outfit_items`, `outfit_seasons`, `outfit_tags`                                                                      |      4 |
+| Wear                         | `wear_events`, `wear_event_items`                                                                                               |      2 |
+| Import                       | `import_sources`, `external_item_identities`, `import_sessions`, `import_archive_parts`, `import_records`, `import_asset_links` |      6 |
+| Operations / lifecycle       | `jobs`, `idempotency_records`, `audit_events`, `export_requests`, `account_deletion_requests`                                   |      5 |
+| **Total application tables** |                                                                                                                                 | **32** |
 
 # ER Diagram
 
@@ -154,6 +154,7 @@ erDiagram
     APPEARANCE_VARIANTS o|--o{ WEAR_EVENT_ITEMS : live_reference
     ACCOUNTS ||--o{ IMPORT_SOURCES : owns
     IMPORT_SOURCES ||--o{ IMPORT_SESSIONS : starts
+    IMPORT_SESSIONS ||--o{ IMPORT_ARCHIVE_PARTS : uploads
     IMPORT_SESSIONS ||--o{ IMPORT_RECORDS : stages
     IMPORT_SOURCES ||--o{ EXTERNAL_ITEM_IDENTITIES : namespaces
     CLOTHING_ITEMS ||--o{ EXTERNAL_ITEM_IDENTITIES : maps
@@ -1231,12 +1232,14 @@ No hidden personal tombstone survives complete account deletion. A non-content o
 - Outfit relational composition and WearEvent snapshot truth.
 - Staged no-production-write import boundary, sealed confirmation, external identity scope and record idempotency.
 
-## May change after Source Audit
+## Resolved by accepted D-099 after Source Audit
 
-- `source_kind`, adapter versions and the JSON schemas inside raw/normalized/diff/decision/issue fields.
-- Import grouping/mapping rules, exact validation issue codes, batch limits and parser checkpoints.
-- Filename/folder adapters, source/catalog proposals, front/back mapping and duplicate heuristics.
-- Exact handling of the known OUT-10 source records and whether usage notes contain importable historical evidence.
+- Proposed source kind is the owner-scoped raw wardrobe image set, adapter `legacy-wardrobe-image-set/v1`, normalized as `aiw.bulk-import/1` staging evidence.
+- Grouping/mapping, bounded issue codes, archive limits, parser checkpoints and sanitized fixture specification are defined in `docs/BULK_IMPORT_SOURCE_AUDIT.md`.
+- Filename/timestamp/UUID values identify assets only. Source/catalog and front/back remain proposals until explicit Resolve; duplicate heuristics never authorize merge.
+- The audited set contains no structured usage or historical wear evidence, so it cannot propose WearEvents.
+
+These choices were explicitly accepted for Phase 10 and are represented by migration 14 and the sealed-confirm application flow. Real source bytes and private names remain outside the repository.
 
 ## Must not change
 
@@ -1365,7 +1368,7 @@ ORDER BY (validation_state='error') DESC,
 3. What exact disclosure and retention apply to minimal WearEvent/import-report facts that remain after individual hard delete until event/import retention or account deletion? No ClothingItem tombstone is created.
 4. Which FTS configuration and `pg_trgm` thresholds pass representative Russian/English brand, typo and short-query tests? Extension availability must be verified in the selected project/version.
 5. What IANA timezone selection/fallback UX is used before the first WearEvent when account timezone is still unknown? `occurred_on` may not be guessed from a future browser session.
-6. What exact Source Audit schemas, issue codes, mapping rules, batch/JSON limits and retention replace the provisional import payload contracts?
+6. D-099 resolves the first adapter schema, issue codes, mapping rules, batch/JSON limits and staging retention. Additional adapters require a separate decision.
 7. Does MVP accept HEIC metadata/originals, and which verified MIME/dimension fields are populated before or after isolated conversion?
 8. Which direct upload mechanism and Storage RLS/object-key layout is selected after the Phase 5 model and User A/B validation?
 9. Exact operational/backup deletion SLA, export package version and object recovery policy remain production gates.
@@ -1460,7 +1463,7 @@ The existing owner-scoped search document and indexes are reused by `search_ward
 
 On 2026-09-17 a clean local reset replayed all 12 migrations, DB lint passed, 90/90 pgTAP assertions passed and regenerated TypeScript types contained only the expected two command RPCs plus the RLS-protected search RPC. No unexpected schema/type drift was found.
 
-The required Source Audit could not inspect real records because `sources/` and a source archive are absent from the checkout. No source identifiers, images, `OUT-10` mapping or production ClothingItem fixture was invented. Bulk Import remains unimplemented and blocked on that input.
+At the Phase 8 gate no source archive was available, so no source identifier, image mapping or production fixture was invented. Phase 10 later completed the required read-only Source Audit outside Git and implemented only the accepted D-099 adapter with fictional fixtures.
 
 Independent Phase 8 review initially returned `CHANGES REQUIRED`: no P0 findings, one P1, two P2 and two P3 findings. The active-account guard, bounded relational search, draft-archive contract, cross-account error normalization and broader accessibility coverage were remediated and revalidated. The final repeat review outcome is `APPROVE`, Phase 8 is explicitly approved, production deployment was not run and Phase 9 is next/not started.
 
@@ -1469,3 +1472,17 @@ Independent Phase 8 review initially returned `CHANGES REQUIRED`: no P0 findings
 Migration `202609170013_private_media_foundation.sql` owns the two private buckets, their Storage RLS policies and the narrow media command surface. Original paths have the form `accounts/{account_id}/assets/{asset_id}/source/v1`; rendition paths include the immutable processor profile, kind and generation identifier. The database validates exact path derivation instead of trusting a browser-provided owner prefix.
 
 Media lifecycle transitions, idempotency records and jobs are changed atomically by capability functions with an empty `search_path`. The authenticated role retains owner-scoped metadata reads but receives no direct media-table mutations. Service-role worker commands claim bounded leases and record validation/processing/cleanup outcomes. Storage objects themselves are created/deleted only through the Storage API.
+
+# Phase 10 Bulk Import Migration
+
+Migration `202609180014_bulk_import_mvp.sql` adds one table, `import_archive_parts`, bringing the executable inventory to 32 application tables. Each part is account/session-owned, has a bounded ordinal and size, and stores only the server-derived private Storage locator plus observed hash/state. The migration also adds the private `wardrobe-imports` bucket and one exact-path authenticated INSERT policy; browser read, list, overwrite, update and delete grants are absent.
+
+Existing `import_sessions` and `import_asset_links` gain only the state, sealed-hash, retention and explicit resolution fields required by accepted D-099. No production item, variant or binding is created by Choose, upload, Prepare, Review, Resolve or Preview.
+
+Capability-specific service-role functions with empty `search_path` implement intent, verified completion, job lease, staging, resolution replacement, sealed Preview/Confirm, per-record commit/failure, retry, cancel and cleanup finalization. `anon` and `authenticated` cannot execute them. Server code supplies the active account resolved from verified identity; browser ownership identifiers are not contract fields.
+
+Confirm binds an exact session version, preview revision, manifest hash, idempotency key and request hash. Per-record commit is atomic and terminal outcomes make replay a read of the existing outcome rather than another domain write. Update requires an owner-scoped target plus exact ClothingItem version. Variant and media-binding conflicts fail explicitly instead of being hidden by unique-conflict suppression.
+
+Cleanup jobs remain eligible only for terminal sessions and do not replace `completed`, `partial` or `cancelled` Results state. Cancellation invalidates stale queued parse/commit jobs. Storage object deletion is performed by the worker through Storage API; SQL records state and schedules existing media cleanup only.
+
+The final Phase 10 database gate passed with a clean replay of all 14 migrations, DB lint, 208/208 pgTAP assertions, byte-for-byte stable generated types and a 32-table all-RLS schema inventory. The independent review found no remaining P0/P1/P2, returned `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 10 on 2026-09-18. Production deployment is NOT RUN and Phase 11 is NOT STARTED.

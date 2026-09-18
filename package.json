@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:storage": "node scripts/test-media-storage.mjs",
+    "test:import-storage": "node scripts/test-import-storage.mjs",
     "test:watch": "vitest",
     "test:db": "supabase test db",
     "test:e2e": "node scripts/run-e2e.mjs",
@@ -30,6 +31,9 @@
     "db:types": "node scripts/generate-database-types.mjs",
     "media:worker": "NODE_OPTIONS=--conditions=react-server tsx scripts/media-worker.ts",
     "media:worker:drain": "NODE_OPTIONS=--conditions=react-server tsx scripts/media-worker.ts --drain",
+    "import:worker": "NODE_OPTIONS=--conditions=react-server tsx scripts/import-worker.ts",
+    "import:worker:drain": "NODE_OPTIONS=--conditions=react-server tsx scripts/import-worker.ts --drain",
+    "import:fixture": "tsx scripts/generate-bulk-import-fixture.ts",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm db:inventory && pnpm security:secrets && pnpm build"
   },
   "dependencies": {

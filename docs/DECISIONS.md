@@ -970,11 +970,11 @@ Import является MVP requirement, однако неподтверждён
 
 ### Consequences
 
-Staged interaction model утверждена и не блокирует approval остальной Phase 2. До final detailed Import UX обязательна проверка item IDs, photos, catalog images, front/back, AppearanceVariants, usage notes, naming conventions, possible duplicates и наличия historical wear data. AppearanceVariant как MVP requirement не пересматривается.
+Staged interaction model утверждена и не блокирует approval остальной Phase 2. На момент решения final detailed Import UX требовал Source Audit; этот gate позже выполнен и утверждён в D-099. AppearanceVariant как MVP requirement не пересматривается.
 
 ### Status
 
-Accepted — approved UX decision; detailed Bulk Import UX remains provisional pending Source Audit.
+Accepted — approved UX decision; its former Source Audit gate is superseded by accepted D-099.
 
 ## D-041 — Future AI is contextual-first and draft-only for consequential writes
 
@@ -1618,7 +1618,7 @@ Large source sets contain ambiguity and partial failures. One long transaction o
 
 ### Consequences
 
-External identity is scoped by owner + source. Confirmed fields, primary image, lifecycle, ownership, variants and history are protected. Exact mapping/grouping/duplicate/image/AppearanceVariant rules remain provisional until mandatory Source Audit.
+External identity is scoped by owner + source. Confirmed fields, primary image, lifecycle, ownership, variants and history are protected. The formerly provisional mapping/grouping/duplicate/image/AppearanceVariant rules are now bounded by accepted D-099.
 
 ### Status
 
@@ -2026,7 +2026,7 @@ Preview decisions, retries and partial record failures must not silently duplica
 
 ### Consequences
 
-Commit uses bounded per-record transactions and produces a report. Individual ClothingItem hard delete removes its current external identity mappings and clears ImportRecord candidate/result live FKs while retaining safe source/session/outcome history. A new session with the same external identifier is an unmapped Preview + explicit Confirm case; replaying the old terminal committed session cannot recreate the deleted item. Exact mapping/grouping/duplicate/image/source/catalog/AppearanceVariant rules remain provisional until the mandatory Source Audit.
+Commit uses bounded per-record transactions and produces a report. Individual ClothingItem hard delete removes its current external identity mappings and clears ImportRecord candidate/result live FKs while retaining safe source/session/outcome history. A new session with the same external identifier is an unmapped Preview + explicit Confirm case; replaying the old terminal committed session cannot recreate the deleted item. The formerly provisional mapping/grouping/duplicate/image/source/catalog/AppearanceVariant rules are now bounded by accepted D-099.
 
 ### Status
 
@@ -2386,3 +2386,40 @@ The application needs private Storage buckets/RLS, a TUS client, a pinned image 
 ### Status
 
 Accepted, implemented and explicitly approved for Phase 9 on 2026-09-18 with external-review outcome `APPROVE WITH WARNINGS`. Accepted limitations: hosted Storage and production worker scheduling were not validated, general antivirus is outside the allowlisted manual-image scope, and type generation retains a known nonfatal `MaxListenersExceededWarning` while producing byte-for-byte stable output. Production deployment and Phase 10 are not authorized by this decision.
+
+## D-099 — Source-audited Bulk Import uses a bounded raw-image adapter and sealed Confirm
+
+### Decision
+
+The first Bulk Import source contract is `legacy-wardrobe-image-set/v1`, derived from the read-only audit in `docs/BULK_IMPORT_SOURCE_AUDIT.md`. It accepts one source set of at most four image-only ZIP parts and supports only validated single-frame JPEG/PNG entries within explicit archive, decode, dimension and pixel limits. The audited source is a two-part, image-only set with 255 valid assets but no manifest, stable item IDs, source-to-catalog mapping, item metadata or wear evidence.
+
+An input manifest is not part of this image-only adapter. Prepare creates an untrusted internal `aiw.bulk-import/1` inventory; it does not create domain records. Camera timestamps, UUID-shaped filenames, archive order, content hashes and visual similarity are asset evidence only and never item identity or authorization authority. Records without stable external IDs are create/link/skip proposals; update requires an explicit owner-scoped existing-item choice and is never inferred automatically.
+
+The workflow is **Choose → Prepare → Review → Resolve → Preview → Confirm → Results**. Confirm seals one exact preview revision and canonical manifest hash. Before Confirm there are no ClothingItem, AppearanceVariant, production media binding, Outfit or WearEvent writes. Commit is capability-specific, account-derived, exact-origin, bounded per record and idempotent by retained record commit keys. Retry returns/reconciles prior outcomes and cannot duplicate records.
+
+One user-confirmed physical group maps to at most one ClothingItem. ImageView, AppearanceVariant, physical set, source/catalog role and catalog page/slot remain separate decisions. Exact duplicates may collapse to one proposed asset with aliases; probable duplicates never auto-merge. Usage text without explicit dated evidence never becomes a WearEvent. Unknown is retained as unresolved, not converted into a default.
+
+Raw archives and staged assets remain private quarantine data. Anonymous and cross-account known-ID access are denied, client paths are non-authoritative, cleanup uses Storage APIs, and logs/reports contain bounded metadata rather than filenames, notes, EXIF or pixels. Cancelled and terminal raw bytes are cleanup-eligible immediately and deleted within 24 hours; inactive unconfirmed sessions expire after seven days.
+
+### Why
+
+The real source set is large enough to test practical bounds but lacks the relationships required for safe automatic import. Treating timestamps, UUIDs or similarity as item IDs would merge views, variants or separate physical items without evidence. A sealed review contract preserves the MVP activation path while keeping production truth behind explicit user decisions and a replay-safe confirmation boundary.
+
+### Alternatives considered
+
+- Treat each image as a ClothingItem.
+- Infer one item from filename timestamps, ZIP order or perceptual similarity.
+- Require the owner to modify the original archive or invent a source manifest outside the product.
+- Auto-update existing items from camera/UUID filenames.
+- Upload directly into production media/item relations before review.
+- Support multiple speculative CSV/JSON/archive adapters in the first implementation.
+
+### Consequences
+
+The first implementation needs quarantine/archive parsing, an owner-scoped staged review model, manual grouping, bounded issue codes, sealed preview hashing, record-level outcomes and cleanup/retry jobs. It cannot promise automatic source-to-catalog pairing or repeat-import updates for the audited raw set. The sanitized fixture is synthetic and specified in the audit addendum; no audited filename, note, image or EXIF value enters Git or CI.
+
+D-099 was subsequently authorized for Phase 10 implementation. Migration 014, the private staging/TUS path, capability-specific commands, parser/worker, owner-scoped review UI and executable synthetic fixture implement the decision without authorizing a commit, push, deployment or Phase 11. Production antivirus and hosted quarantine/worker validation remain later deployment gates.
+
+### Status
+
+Accepted by explicit user decision on 2026-09-18 and implemented locally in Phase 10. Final Phase 10 approval remains separate from implementation and external review.
