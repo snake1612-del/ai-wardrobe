@@ -1463,3 +1463,9 @@ On 2026-09-17 a clean local reset replayed all 12 migrations, DB lint passed, 90
 The required Source Audit could not inspect real records because `sources/` and a source archive are absent from the checkout. No source identifiers, images, `OUT-10` mapping or production ClothingItem fixture was invented. Bulk Import remains unimplemented and blocked on that input.
 
 Independent Phase 8 review initially returned `CHANGES REQUIRED`: no P0 findings, one P1, two P2 and two P3 findings. The active-account guard, bounded relational search, draft-archive contract, cross-account error normalization and broader accessibility coverage were remediated and revalidated. The final repeat review outcome is `APPROVE`, Phase 8 is explicitly approved, production deployment was not run and Phase 9 is next/not started.
+
+# Phase 9 Media Commands and Storage
+
+Migration `202609170013_private_media_foundation.sql` owns the two private buckets, their Storage RLS policies and the narrow media command surface. Original paths have the form `accounts/{account_id}/assets/{asset_id}/source/v1`; rendition paths include the immutable processor profile, kind and generation identifier. The database validates exact path derivation instead of trusting a browser-provided owner prefix.
+
+Media lifecycle transitions, idempotency records and jobs are changed atomically by capability functions with an empty `search_path`. The authenticated role retains owner-scoped metadata reads but receives no direct media-table mutations. Service-role worker commands claim bounded leases and record validation/processing/cleanup outcomes. Storage objects themselves are created/deleted only through the Storage API.

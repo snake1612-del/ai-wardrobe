@@ -3,10 +3,12 @@ import { extname, join, relative } from "node:path";
 
 const root = process.cwd();
 const roots = [".github", "docs", "scripts", "src", "supabase", "tests"];
+const optionalBrowserBundleRoots = [".next/static"];
 const rootFiles = [".env.example", "README.md", "package.json", "next.config.ts"];
 const textExtensions = new Set([
   ".css",
   ".json",
+  ".js",
   ".md",
   ".mjs",
   ".sql",
@@ -97,6 +99,18 @@ const files = [
   ...rootFiles.map((path) => join(root, path)),
   ...(await Promise.all(roots.map((path) => collect(join(root, path))))).flat(),
 ];
+const browserBundleFiles = (
+  await Promise.all(
+    optionalBrowserBundleRoots.map(async (path) => {
+      try {
+        return await collect(join(root, path));
+      } catch (error) {
+        if (error?.code === "ENOENT") return [];
+        throw error;
+      }
+    }),
+  )
+).flat();
 const findings = [];
 
 for (const file of files) {
@@ -106,11 +120,21 @@ for (const file of files) {
   }
 }
 
+// A legacy local Supabase publishable/anon key can be JWT-shaped and is expected in
+// a client bundle. Browser artifacts still must never contain privileged credentials.
+const browserForbidden = forbidden.filter(({ label }) => label !== "JWT-shaped credential");
+for (const file of browserBundleFiles) {
+  const content = await readFile(file, "utf8");
+  for (const { label, pattern } of browserForbidden) {
+    if (pattern.test(content)) findings.push(`${relative(root, file)}: ${label}`);
+  }
+}
+
 if (findings.length > 0) {
   console.error(`Potential committed secrets:\n${findings.join("\n")}`);
   process.exitCode = 1;
 } else {
   console.info(
-    `Secret scan passed (${files.length} text files and ${syntheticRegressionFixtures.length} regression fixtures checked).`,
+    `Secret scan passed (${files.length} source files, ${browserBundleFiles.length} browser bundle files, and ${syntheticRegressionFixtures.length} regression fixtures checked).`,
   );
 }
