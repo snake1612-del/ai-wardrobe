@@ -78,6 +78,7 @@ async function uploadTus(client, part, bytes, failFirst = false) {
   await new Promise((resolve, reject) => {
     new tus.Upload(bytes, {
       endpoint: `${apiUrl}/storage/v1/upload/resumable`,
+      chunkSize: 6 * 1024 * 1024,
       retryDelays: [0, 50, 100],
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
@@ -131,7 +132,10 @@ try {
   const clientB = userClient();
   await clientA.auth.signInWithPassword({ email: emailA, password });
   await clientB.auth.signInWithPassword({ email: emailB, password });
-  const bytes = Buffer.from("PK\u0003\u0004synthetic-private-archive", "binary");
+  const bytes = Buffer.concat([
+    Buffer.from("PK\u0003\u0004synthetic-private-archive", "binary"),
+    Buffer.alloc(6 * 1024 * 1024),
+  ]);
   const intentA = await createIntent(accounts[0], bytes.length, `intent-a-${suffix}`);
   const intentB = await createIntent(accounts[1], bytes.length, `intent-b-${suffix}`);
 

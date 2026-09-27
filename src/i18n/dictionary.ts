@@ -477,6 +477,7 @@ export const dictionary: Readonly<Record<string, Translation>> = {
     ru: "Не удалось передать архив. Повторите загрузку.",
     en: "Could not upload the archive. Try the upload again.",
   },
+  "Повторить загрузку": { ru: "Повторить загрузку", en: "Retry upload" },
   "Загрузка не подтверждена.": { ru: "Загрузка не подтверждена.", en: "Upload was not confirmed." },
   "Передача остановлена. Откройте импорт и повторите отмену.": {
     ru: "Передача остановлена. Откройте импорт и повторите отмену.",

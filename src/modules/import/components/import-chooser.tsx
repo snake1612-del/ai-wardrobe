@@ -2,12 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import * as tus from "tus-js-client";
 import { useI18n } from "@/i18n/context";
 
 import { createSupabaseBrowserClient } from "@/infrastructure/supabase/browser-client";
 import { getPublicEnvironment } from "@/platform/env/public";
 import { IMPORT_MAX_ARCHIVE_BYTES, IMPORT_MAX_PARTS } from "@/modules/import/model";
+import {
+  retainImportUploadSelection,
+  shouldTransferImportPart,
+  transferImportPart,
+  type ImportUploadSelection,
+} from "@/modules/import/import-tus-upload";
 
 type Progress = Readonly<{ part: number; percent: number }>;
 
@@ -20,29 +25,34 @@ export function ImportChooser() {
   const router = useRouter();
   const cancelUploadRef = useRef<(() => void) | null>(null);
   const activeSessionRef = useRef<{ id: string; version: number } | null>(null);
+  const selectionRef = useRef<ImportUploadSelection | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [retryAvailable, setRetryAvailable] = useState(false);
 
   async function start() {
     if (files.length < 1 || files.length > IMPORT_MAX_PARTS) return;
     setBusy(true);
     setError("");
+    const retrying = selectionRef.current !== null;
+    const selection = retainImportUploadSelection(selectionRef.current, files);
+    selectionRef.current = selection;
     try {
       const intentResponse = await fetch("/api/import/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           parts: files.map((file) => ({ byteSize: file.size })),
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: selection.idempotencyKey,
         }),
       });
       const intent = (await intentResponse.json()) as {
         session_id?: string;
         version?: number;
         tusEndpoint?: string;
-        parts?: Array<{ part_id: string; bucket: string; object_key: string }>;
+        parts?: Array<{ part_id: string; bucket: string; object_key: string; state: string }>;
         error?: { message?: string };
       };
       if (!intentResponse.ok || !intent.session_id || !intent.tusEndpoint || !intent.parts) {
@@ -56,53 +66,42 @@ export function ImportChooser() {
       for (const [index, file] of files.entries()) {
         const part = intent.parts[index];
         if (!part) throw new Error("Ответ загрузки неполный.");
-        await new Promise<void>((resolve, reject) => {
-          const operation = new tus.Upload(file, {
-            endpoint: tusEndpoint,
-            retryDelays: [0, 1_000, 3_000, 5_000],
-            uploadDataDuringCreation: true,
-            removeFingerprintOnSuccess: true,
-            storeFingerprintForResuming: false,
-            headers: {
-              authorization: `Bearer ${data.session!.access_token}`,
-              apikey: environment.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-            },
-            metadata: {
-              bucketName: part.bucket,
-              objectName: part.object_key,
-              contentType: "application/zip",
-              cacheControl: "0",
-            },
-            onError: () => reject(new Error("Не удалось передать архив. Повторите загрузку.")),
-            onProgress: (uploaded, total) => {
-              setProgress({
-                part: index + 1,
-                percent: total > 0 ? Math.round((uploaded / total) * 100) : 0,
-              });
-            },
-            onSuccess: () => {
-              cancelUploadRef.current = null;
-              resolve();
-            },
-          });
-          cancelUploadRef.current = () => {
-            void operation.abort().finally(() => reject(new Error("upload_cancelled")));
-          };
-          operation.start();
-        });
-        const completion = await fetch(
-          `/api/import/sessions/${intent.session_id}/parts/${part.part_id}/complete`,
-          { method: "POST" },
+        const completionUrl = `/api/import/sessions/${intent.session_id}/parts/${part.part_id}/complete`;
+        const shouldTransfer = await shouldTransferImportPart(part.state, retrying, () =>
+          fetch(completionUrl, { method: "POST" }),
         );
+        if (!shouldTransfer) continue;
+        await transferImportPart(file, {
+          endpoint: tusEndpoint,
+          accessToken: data.session.access_token,
+          apiKey: environment.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+          bucket: part.bucket,
+          objectKey: part.object_key,
+          onFailure: (failure) => console.warn("import.tus.upload.failed", failure),
+          onProgress: (uploaded, total) => {
+            setProgress({
+              part: index + 1,
+              percent: total > 0 ? Math.round((uploaded / total) * 100) : 0,
+            });
+          },
+          setCancel: (cancel) => {
+            cancelUploadRef.current = cancel;
+          },
+        });
+        const completion = await fetch(completionUrl, { method: "POST" });
         const completionBody = (await completion.json()) as { error?: { message?: string } };
         if (!completion.ok) {
           throw new Error(completionBody.error?.message ?? "Загрузка не подтверждена.");
         }
       }
+      selectionRef.current = null;
+      setRetryAvailable(false);
       router.push(`/app/import/${intent.session_id}`);
       router.refresh();
     } catch (caught) {
       if (caught instanceof Error && caught.message === "upload_cancelled") {
+        selectionRef.current = null;
+        setRetryAvailable(false);
         const active = activeSessionRef.current;
         if (active) {
           const cancellation = await fetch(`/api/import/sessions/${active.id}/cancel`, {
@@ -117,6 +116,7 @@ export function ImportChooser() {
         }
         setError("Импорт отменён; staged data поставлены на cleanup.");
       } else {
+        setRetryAvailable(true);
         setError(publicMessage(caught, "Импорт не подготовлен."));
       }
     } finally {
@@ -155,6 +155,8 @@ export function ImportChooser() {
               return;
             }
             setFiles(selected);
+            selectionRef.current = null;
+            setRetryAvailable(false);
             setError("");
           }}
         />
@@ -189,7 +191,7 @@ export function ImportChooser() {
           disabled={busy || files.length === 0}
           onClick={() => void start()}
         >
-          {busy ? t("Загружаем…") : t("Загрузить")}
+          {busy ? t("Загружаем…") : retryAvailable ? t("Повторить загрузку") : t("Загрузить")}
         </button>
         {busy ? (
           <button
