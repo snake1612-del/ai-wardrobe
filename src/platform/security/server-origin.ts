@@ -10,5 +10,9 @@ export async function getTrustedMutationOrigin(): Promise<string | null> {
   const origin = requestHeaders.get("origin");
   const host = requestHeaders.get("host");
   const protocol = requestHeaders.get("x-forwarded-proto");
-  return isTrustedSameOrigin(origin, host, protocol, getApplicationOrigin()) ? origin : null;
+  const allowLocalAliases =
+    process.env.NODE_ENV !== "production" && process.env.APP_ENV === "local";
+  return isTrustedSameOrigin(origin, host, protocol, getApplicationOrigin(), allowLocalAliases)
+    ? origin
+    : null;
 }

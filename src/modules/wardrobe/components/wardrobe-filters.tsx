@@ -2,6 +2,8 @@
 
 import { useRef, type ReactNode } from "react";
 
+import { useI18n } from "@/i18n/context";
+
 type FilterFormProps = Readonly<{
   autoApply?: boolean;
   children: ReactNode;
@@ -23,6 +25,7 @@ export function WardrobeFilterForm({ autoApply = false, children, className }: F
 }
 
 export function MobileWardrobeFilterSheet({ children }: Readonly<{ children: ReactNode }>) {
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   return (
     <div className="mb-5 lg:hidden">
@@ -32,7 +35,7 @@ export function MobileWardrobeFilterSheet({ children }: Readonly<{ children: Rea
         aria-haspopup="dialog"
         onClick={() => dialogRef.current?.showModal()}
       >
-        Фильтры
+        {t("Фильтры")}
       </button>
       <dialog
         ref={dialogRef}
@@ -42,14 +45,14 @@ export function MobileWardrobeFilterSheet({ children }: Readonly<{ children: Rea
         <div className="mx-auto flex min-h-full max-w-xl flex-col p-5">
           <header className="mb-5 flex items-center justify-between gap-4 border-b border-border-subtle pb-4">
             <h2 id="wardrobe-filter-title" className="text-2xl font-semibold">
-              Фильтры гардероба
+              {t("Фильтры гардероба")}
             </h2>
             <button
               type="button"
               className="min-h-11 rounded-lg px-3 text-sm font-semibold underline"
               onClick={() => dialogRef.current?.close()}
             >
-              Закрыть
+              {t("Закрыть")}
             </button>
           </header>
           {children}

@@ -31,12 +31,19 @@ file_size_limit = "50MiB"
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["http://127.0.0.1:3000/**"]
+additional_redirect_urls = [
+  "http://127.0.0.1:3000/**",
+  "http://localhost:3000/**",
+]
 enable_signup = true
+minimum_password_length = 8
+password_requirements = ""
 
 [auth.email]
+double_confirm_changes = true
 enable_signup = true
 enable_confirmations = false
+secure_password_change = true
 
 [analytics]
 enabled = false

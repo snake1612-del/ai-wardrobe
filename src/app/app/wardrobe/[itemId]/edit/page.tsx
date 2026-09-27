@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { getServerI18n } from "@/i18n/server";
 import { getWardrobeReturnPath } from "@/modules/wardrobe/model";
 
 import { ItemForm } from "@/modules/wardrobe/components/item-form";
@@ -19,6 +20,7 @@ export default async function EditWardrobeItemPage({
   params: Promise<{ itemId: string }>;
   searchParams: Promise<{ from?: string }>;
 }>) {
+  const { t } = await getServerI18n();
   const { itemId } = await params;
   const query = await searchParams;
   if (!z.string().uuid().safeParse(itemId).success) notFound();
@@ -34,12 +36,14 @@ export default async function EditWardrobeItemPage({
         href={{ pathname: `/app/wardrobe/${item.id}`, query: { from: returnTo } }}
         className="text-sm text-accent underline"
       >
-        ← К карточке
+        {t("← К карточке")}
       </Link>
       <Surface className="mt-4">
-        <h1 className="text-3xl font-semibold">Редактировать вещь</h1>
+        <h1 className="text-3xl font-semibold">{t("Редактировать вещь")}</h1>
         <p className="mt-2 text-text-secondary">
-          Версия {item.version}. При конфликте данные не будут перезаписаны.
+          {t("Версия {version}. При конфликте данные не будут перезаписаны.", {
+            version: item.version,
+          })}
         </p>
         <div className="mt-8">
           <ItemForm item={item} returnTo={returnTo} {...references} />

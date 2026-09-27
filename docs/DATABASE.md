@@ -177,14 +177,15 @@ erDiagram
 | Column         | Type          | Null | Default             | Notes                                   |
 | -------------- | ------------- | ---: | ------------------- | --------------------------------------- |
 | `id`           | `uuid`        |   no | `gen_random_uuid()` | Domain owner ID                         |
+| `display_name` | `text`        |  yes | `NULL`              | Trimmed owner-visible name, 1–80 chars  |
 | `auth_user_id` | `uuid`        |   no | —                   | Unique conceptual FK to `auth.users.id` |
 | `state`        | `text`        |   no | `'active'`          | `active`, `restricted`, `deleting`      |
 | `created_at`   | `timestamptz` |   no | `now()`             | Creation moment                         |
 | `updated_at`   | `timestamptz` |   no | `now()`             | Authoritative update moment             |
 | `version`      | `bigint`      |   no | `1`                 | Account-level concurrency               |
 
-**Keys / constraints:** PK `id`; UNIQUE `auth_user_id`; UNIQUE `(id, auth_user_id)`; checks `version > 0`, allowed state. FK to `auth.users` is `ON DELETE RESTRICT`: domain deletion completes before provider identity deletion.  
-**Indexes:** unique indexes above; `(state, id)` for deletion/admin workflow.  
+**Keys / constraints:** PK `id`; UNIQUE `auth_user_id`; UNIQUE `(id, auth_user_id)`; checks `version > 0`, allowed state and normalized optional `display_name` length. FK to `auth.users` is `ON DELETE RESTRICT`: domain deletion completes before provider identity deletion.
+**Indexes:** unique indexes above; `(state, id)` for deletion/admin workflow.
 **RLS ownership path:** `auth.uid() = auth_user_id`; creation/deletion through trusted account workflow.  
 **Delete/archive:** no archive. Account deletion is orchestrated; no single massive cascade.
 
@@ -193,22 +194,23 @@ erDiagram
 **Purpose:** durable user-confirmed MVP preferences, not transient UI or learned AI state.  
 **Ownership:** direct `account_id`.
 
-| Column                      | Type          | Null | Default         | Notes                                                |
-| --------------------------- | ------------- | ---: | --------------- | ---------------------------------------------------- |
-| `account_id`                | `uuid`        |   no | —               | PK/FK                                                |
-| `locale_code`               | `text`        |  yes | `NULL`          | Unknown until confirmed                              |
-| `timezone_name`             | `text`        |  yes | `NULL`          | Confirmed IANA name; not guessed truth               |
-| `week_starts_on`            | `smallint`    |   no | `1`             | 1–7, ISO weekday                                     |
-| `units_code`                | `text`        |  yes | `NULL`          | E.g. `metric`; only when user chooses                |
-| `onboarding_state`          | `text`        |   no | `'not_started'` | `not_started`, `in_progress`, `completed`, `skipped` |
-| `preference_schema_version` | `smallint`    |   no | `1`             | For bounded future additions                         |
-| `extra_preferences`         | `jsonb`       |   no | `'{}'`          | Allowlisted low-risk keys only                       |
-| `updated_at`                | `timestamptz` |   no | `now()`         | Last change                                          |
-| `version`                   | `bigint`      |   no | `1`             | Optimistic concurrency                               |
+| Column                      | Type          | Null | Default         | Notes                                                          |
+| --------------------------- | ------------- | ---: | --------------- | -------------------------------------------------------------- |
+| `account_id`                | `uuid`        |   no | —               | PK/FK                                                          |
+| `locale_code`               | `text`        |  yes | `NULL`          | Explicit `ru` or `en`; initialized from cookie only after auth |
+| `timezone_name`             | `text`        |  yes | `NULL`          | Confirmed IANA name; not guessed truth                         |
+| `week_starts_on`            | `smallint`    |   no | `1`             | 1–7, ISO weekday                                               |
+| `units_code`                | `text`        |  yes | `NULL`          | E.g. `metric`; only when user chooses                          |
+| `onboarding_state`          | `text`        |   no | `'not_started'` | `not_started`, `in_progress`, `completed`, `skipped`           |
+| `preference_schema_version` | `smallint`    |   no | `1`             | For bounded future additions                                   |
+| `extra_preferences`         | `jsonb`       |   no | `'{}'`          | Allowlisted low-risk keys only                                 |
+| `updated_at`                | `timestamptz` |   no | `now()`         | Last change                                                    |
+| `version`                   | `bigint`      |   no | `1`             | Optimistic concurrency                                         |
 
 **Keys / constraints:** PK `account_id`; FK account `ON DELETE RESTRICT`; checks weekday, positive versions and JSON object.  
 **Indexes:** PK only.  
 **RLS:** direct account lookup.  
+**Mutation:** authenticated-only `set_own_locale(text)` is `SECURITY DEFINER` with empty `search_path`; it derives the active account from `auth.uid()`, accepts no account ID and updates only the caller's preference.
 **Delete:** removed explicitly during account deletion.
 
 # Categories / Tags / Structured Attributes
@@ -1486,3 +1488,19 @@ Confirm binds an exact session version, preview revision, manifest hash, idempot
 Cleanup jobs remain eligible only for terminal sessions and do not replace `completed`, `partial` or `cancelled` Results state. Cancellation invalidates stale queued parse/commit jobs. Storage object deletion is performed by the worker through Storage API; SQL records state and schedules existing media cleanup only.
 
 The final Phase 10 database gate passed with a clean replay of all 14 migrations, DB lint, 208/208 pgTAP assertions, byte-for-byte stable generated types and a 32-table all-RLS schema inventory. The independent review found no remaining P0/P1/P2, returned `APPROVE WITH WARNINGS`, and the user explicitly approved Phase 10 on 2026-09-18. Production deployment is NOT RUN and Phase 11 is NOT STARTED.
+
+# Post-approval Migrations 015–021
+
+The current publication candidate extends the approved fourteen-migration Phase 10 baseline without adding a new product phase:
+
+15. `import_prepare_lease` adds owner/job-protected lease renewal for long Prepare work. Renewal rejects lost leases and ineligible session states before further staging writes.
+16. `import_prepare_retry` adds the narrowly scoped Prepare retry transition used after a terminal processing failure without uploading the archive again.
+17. `import_preview_workers` separates parse/media preview work from commit and cleanup claims so a local preview worker cannot execute Confirm.
+18. `import_progress` exposes bounded owner-scoped progress facts without filenames, object paths or provider payloads.
+19. `account_profile` adds the versioned display-name field and owner-derived profile command.
+20. `interface_locale` adds `account_preferences.locale_code` and authenticated-only `set_own_locale`.
+21. `account_regional_settings` constrains units, week start and timezone shape and adds authenticated-only `update_own_regional_preferences`.
+
+`update_own_regional_preferences(timezone, units, week_start, expected_version)` resolves the active account from `auth.uid()`; it has no account parameter. It validates the timezone against PostgreSQL's timezone catalog, accepts only `metric` or `imperial`, accepts week start 1 or 7, returns the existing row/version for an identical replay and raises a conflict for a stale changed-value write. The function is `SECURITY DEFINER` with an empty `search_path`, revoked from `public` and `anon`, and executable only by `authenticated`.
+
+These migrations do not implement export, account deletion, Outfit/Wear/Analytics or a later phase. Generated database types are infrastructure output and must match the fully applied local schema.

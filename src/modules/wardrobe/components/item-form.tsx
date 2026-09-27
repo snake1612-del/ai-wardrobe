@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 
+import { useI18n } from "@/i18n/context";
+
 import { Button } from "@/ui/button";
 
 import type { WardrobeItemDetail, WardrobeReference } from "../model";
@@ -28,6 +30,7 @@ function joined(item: WardrobeItemDetail | undefined, kind: string): string {
 }
 
 export function ItemForm({ item, createId, returnTo, categories, colors, seasons }: Props) {
+  const { t } = useI18n();
   const [state, action, pending] = useActionState(saveWardrobeItemAction, initialState);
   const selectedColors = new Set(item?.colors.map(({ id }) => id));
   const selectedSeasons = new Set(item?.seasons.map(({ id }) => id));
@@ -43,14 +46,14 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           role="alert"
           className="rounded-lg bg-[var(--aw-error-surface)] p-4 text-[var(--aw-error)]"
         >
-          {state.message}
+          {t(state.message ?? "")}
         </p>
       ) : null}
 
       <fieldset className="grid gap-5 sm:grid-cols-2">
-        <legend className="mb-4 text-xl font-semibold">Основное</legend>
+        <legend className="mb-4 text-xl font-semibold">{t("Основное")}</legend>
         <label className="sm:col-span-2">
-          <span className="mb-2 block font-medium">Название вещи</span>
+          <span className="mb-2 block font-medium">{t("Название вещи")}</span>
           <input
             className="field"
             name="displayName"
@@ -59,23 +62,23 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Категория / подкатегория</span>
+          <span className="mb-2 block font-medium">{t("Категория / подкатегория")}</span>
           <select className="field" name="categoryId" defaultValue={item?.categoryId ?? ""}>
-            <option value="">Без категории</option>
+            <option value="">{t("Без категории")}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.parentId ? "— " : ""}
-                {category.label}
+                {t(category.label)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          <span className="mb-2 block font-medium">Бренд</span>
+          <span className="mb-2 block font-medium">{t("Бренд")}</span>
           <input className="field" name="brand" defaultValue={item?.brand ?? ""} maxLength={160} />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Артикул</span>
+          <span className="mb-2 block font-medium">{t("Артикул")}</span>
           <input
             className="field"
             name="referenceCode"
@@ -84,7 +87,7 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Размер</span>
+          <span className="mb-2 block font-medium">{t("Размер")}</span>
           <input
             className="field"
             name="sizeLabel"
@@ -93,7 +96,7 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Материал</span>
+          <span className="mb-2 block font-medium">{t("Материал")}</span>
           <input
             className="field"
             name="material"
@@ -102,7 +105,7 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Узор</span>
+          <span className="mb-2 block font-medium">{t("Узор")}</span>
           <input
             className="field"
             name="pattern"
@@ -111,7 +114,7 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           />
         </label>
         <label className="sm:col-span-2">
-          <span className="mb-2 block font-medium">Описание</span>
+          <span className="mb-2 block font-medium">{t("Описание")}</span>
           <textarea
             className="field min-h-24"
             name="description"
@@ -120,7 +123,7 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           />
         </label>
         <label className="sm:col-span-2">
-          <span className="mb-2 block font-medium">Приватные заметки</span>
+          <span className="mb-2 block font-medium">{t("Приватные заметки")}</span>
           <textarea
             className="field min-h-24"
             name="notes"
@@ -131,7 +134,7 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
       </fieldset>
 
       <fieldset>
-        <legend className="mb-3 text-xl font-semibold">Цвета</legend>
+        <legend className="mb-3 text-xl font-semibold">{t("Цвета")}</legend>
         <div className="flex flex-wrap gap-3">
           {colors.map((color) => (
             <label key={color.id} className="choice">
@@ -141,14 +144,14 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
                 value={color.id}
                 defaultChecked={selectedColors.has(color.id)}
               />
-              {color.label}
+              {t(color.label)}
             </label>
           ))}
         </div>
       </fieldset>
 
       <fieldset>
-        <legend className="mb-3 text-xl font-semibold">Сезоны</legend>
+        <legend className="mb-3 text-xl font-semibold">{t("Сезоны")}</legend>
         <div className="flex flex-wrap gap-3">
           {seasons.map((season) => (
             <label key={season.id} className="choice">
@@ -158,58 +161,58 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
                 value={season.id}
                 defaultChecked={selectedSeasons.has(season.id)}
               />
-              {season.label}
+              {t(season.label)}
             </label>
           ))}
         </div>
       </fieldset>
 
       <fieldset className="grid gap-5 sm:grid-cols-2">
-        <legend className="mb-4 text-xl font-semibold">Организация</legend>
+        <legend className="mb-4 text-xl font-semibold">{t("Организация")}</legend>
         <label>
-          <span className="mb-2 block font-medium">Назначение</span>
+          <span className="mb-2 block font-medium">{t("Назначение")}</span>
           <input
             className="field"
             name="purposeLabels"
             defaultValue={joined(item, "purpose")}
-            placeholder="Работа, спорт"
+            placeholder={t("Работа, спорт")}
           />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Стиль</span>
+          <span className="mb-2 block font-medium">{t("Стиль")}</span>
           <input
             className="field"
             name="styleLabels"
             defaultValue={joined(item, "style")}
-            placeholder="Повседневный"
+            placeholder={t("Повседневный")}
           />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Свои теги</span>
+          <span className="mb-2 block font-medium">{t("Свои теги")}</span>
           <input
             className="field"
             name="customLabels"
             defaultValue={joined(item, "custom")}
-            placeholder="Любимое, отпуск"
+            placeholder={t("Любимое, отпуск")}
           />
         </label>
         <label>
-          <span className="mb-2 block font-medium">Варианты внешнего вида</span>
+          <span className="mb-2 block font-medium">{t("Варианты внешнего вида")}</span>
           <input
             className="field"
             name="variantLabels"
             defaultValue={item?.variants.map(({ label }) => label).join(", ") ?? ""}
-            placeholder="Синяя сторона, узорная сторона"
+            placeholder={t("Синяя сторона, узорная сторона")}
           />
           <span className="mt-2 block text-sm text-text-tertiary">
-            Только реальные состояния одной физической вещи, через запятую.
+            {t("Только реальные состояния одной физической вещи, через запятую.")}
           </span>
         </label>
       </fieldset>
 
       <div className="flex flex-wrap gap-3 border-t border-border-subtle pt-6">
         <Button name="intent" value="committed" type="submit" disabled={pending}>
-          {pending ? "Сохраняем…" : "Сохранить вещь"}
+          {pending ? t("Сохраняем…") : t("Сохранить вещь")}
         </Button>
         <button
           name="intent"
@@ -218,7 +221,7 @@ export function ItemForm({ item, createId, returnTo, categories, colors, seasons
           disabled={pending}
           className="inline-flex min-h-12 items-center justify-center rounded-[var(--aw-radius-md)] bg-surface-muted px-5 py-3 text-[15px] leading-5 font-semibold text-text-primary transition-colors hover:bg-surface-selected disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Сохранить черновик
+          {t("Сохранить черновик")}
         </button>
       </div>
     </form>

@@ -223,6 +223,27 @@ export async function retryImport(accountId: string, sessionId: string, input: R
   return data;
 }
 
+export async function retryImportPrepare(accountId: string, sessionId: string, input: Retry) {
+  const { data: parts, error: partsError } = await createImportServiceClient()
+    .from("import_archive_parts")
+    .select("id")
+    .eq("account_id", accountId)
+    .eq("import_session_id", sessionId);
+  if (partsError || !parts || parts.length < 1 || parts.length > 4) {
+    capabilityFailure("import.prepare_retry.parts_unavailable", partsError);
+  }
+  for (const part of parts) await inspectImportPart(accountId, sessionId, part.id);
+  const { data, error } = await createImportServiceClient()
+    .rpc("retry_import_prepare", {
+      p_account_id: accountId,
+      p_session_id: sessionId,
+      p_expected_version: input.expectedVersion,
+    })
+    .single();
+  if (error || !data) capabilityFailure("import.prepare_retry.failed", error);
+  return data;
+}
+
 export async function cancelImport(accountId: string, sessionId: string, input: Retry) {
   const { data, error } = await createImportServiceClient().rpc("cancel_import_session", {
     p_account_id: accountId,
@@ -233,12 +254,37 @@ export async function cancelImport(accountId: string, sessionId: string, input: 
   return Number(data);
 }
 
-export async function claimImportJob(workerId: string) {
+export async function claimImportJob(workerId: string, previewOnly = false) {
   const { data, error } = await createImportServiceClient()
-    .rpc("claim_import_job", { p_worker_id: workerId, p_lease_seconds: 300 })
+    .rpc(previewOnly ? "claim_import_prepare_job" : "claim_import_job", {
+      p_worker_id: workerId,
+      p_lease_seconds: 300,
+    })
     .maybeSingle();
   if (error) capabilityFailure("import.worker.claim_failed", error);
   return data;
+}
+
+export async function renewImportPrepareLease(workerId: string, jobId: string): Promise<boolean> {
+  try {
+    const { data, error } = await createImportServiceClient()
+      .rpc("renew_import_prepare_lease", {
+        p_worker_id: workerId,
+        p_job_id: jobId,
+        p_lease_seconds: 300,
+      })
+      .abortSignal(AbortSignal.timeout(10_000));
+    if (error) {
+      logEvent("warn", "import.worker.lease_renew_failed", {
+        errorCode: /^[A-Z0-9]{5}$/u.test(error.code) ? error.code : "unknown",
+      });
+      return false;
+    }
+    return data === true;
+  } catch {
+    logEvent("warn", "import.worker.lease_renew_failed", { errorCode: "unknown" });
+    return false;
+  }
 }
 
 export async function stageImportAsset(

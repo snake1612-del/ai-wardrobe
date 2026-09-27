@@ -2423,3 +2423,57 @@ D-099 was subsequently authorized for Phase 10 implementation. Migration 014, th
 ### Status
 
 Accepted by explicit user decision on 2026-09-18 and implemented locally in Phase 10. Final Phase 10 approval remains separate from implementation and external review.
+
+## D-100 — Interface locale is explicit, owner-scoped and rendered from one dictionary
+
+### Decision
+
+Support ru and en through one application dictionary with Russian as the fallback source language. The root layout resolves the request locale, sets the document language and provides the same translator to Server and Client Components. Metadata, the web manifest, navigation, forms, validation feedback, empty/loading/error states and accessibility labels use that dictionary; stable database reference labels are translated at the presentation boundary without changing their codes or ownership model.
+
+Before authentication, store the explicit selection in an HTTP-only, same-site locale cookie. After authentication, persist it through the authenticated-only set_own_locale capability, which accepts only ru or en, derives the active account from auth.uid() and accepts no account identifier. Login, signup completion and PKCE callback load the owner preference; when it is still unknown, they initialize it from the anonymous cookie. A different account's persisted preference replaces the prior browser preference after account switch.
+
+Locale mutation remains an exact-origin Server Action. Its return path accepts only a same-origin relative path and rejects protocol-relative and backslash-shaped redirects. Missing dictionary entries fall back to the Russian source key instead of silently producing an empty label.
+
+### Alternatives considered
+
+- Separate per-feature dictionaries with independent fallback behavior.
+- Browser-only localStorage without an SSR-visible locale.
+- A locale URL prefix for the current two-language product.
+- Browser writes directly to account_preferences.
+- Persisting locale in Auth metadata or accepting account_id from the selector.
+
+### Consequences
+
+Adding a visible system string requires a dictionary entry and regression coverage. The locale cookie is presentation state, not authorization; account scope continues to come from the verified server session. Reference vocabulary can remain code-stable while translated labels stay in application presentation until a larger taxonomy requires database-backed translations. Locale-prefixed routes remain a future SEO/product decision.
+
+### Status
+
+Implemented locally after Phase 10; production deployment was not run.
+
+## D-101 — Account settings are owner-derived preferences with optimistic regional updates
+
+### Decision
+
+Expose the protected `/app/settings` route for interface language, timezone, unit system and first day of week. Keep these values on the existing `account_preferences` row rather than creating a parallel settings entity.
+
+Anonymous locale remains an HTTP-only, same-site `aw-locale` cookie so SSR and the first client render share one language. After authentication, locale is read from and persisted to the current owner's `account_preferences.locale_code`; an account switch replaces presentation state with the newly verified owner's preference.
+
+Regional writes use the authenticated-only `update_own_regional_preferences(timezone, units, week_start, expected_version)` function. It derives the active account from `auth.uid()` and accepts no ownership identifier. It validates the timezone against the PostgreSQL timezone catalog, accepts only metric/imperial and Monday/Sunday, treats an identical replay as success without a version increment and requires the exact version for a changed value.
+
+The UI links to the existing profile, wardrobe and Bulk Import surfaces. Export and account deletion are not shown because their workflows are not implemented.
+
+### Alternatives considered
+
+- Browser writes directly to `account_preferences`.
+- Accepting an account ID alongside settings.
+- Storing all authenticated preferences only in localStorage/cookies.
+- Silently accepting arbitrary timezone or unit strings.
+- Adding placeholder Export/Delete controls before those workflows exist.
+
+### Consequences
+
+Settings remain private, RLS-visible to their owner and independently protected by an owner-derived RPC plus exact-origin Server Action. Conflicts require reload rather than last-write-wins. A locale change updates the shared provider and cookie after hydration; server reloads resolve the same initial locale and avoid a hydration mismatch.
+
+### Status
+
+Implemented locally after Phase 10. Targeted unit, pgTAP/RLS and isolated desktop/mobile settings/i18n browser tests passed with fictional identities that were removed. Production deployment was not run.

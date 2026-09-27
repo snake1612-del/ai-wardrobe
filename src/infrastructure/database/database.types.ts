@@ -108,6 +108,7 @@ export type Database = {
         Row: {
           auth_user_id: string
           created_at: string
+          display_name: string | null
           id: string
           state: string
           updated_at: string
@@ -116,6 +117,7 @@ export type Database = {
         Insert: {
           auth_user_id: string
           created_at?: string
+          display_name?: string | null
           id?: string
           state?: string
           updated_at?: string
@@ -124,6 +126,7 @@ export type Database = {
         Update: {
           auth_user_id?: string
           created_at?: string
+          display_name?: string | null
           id?: string
           state?: string
           updated_at?: string
@@ -1756,7 +1759,30 @@ export type Database = {
           payload: Json
         }[]
       }
+      claim_import_prepare_job: {
+        Args: { p_lease_seconds?: number; p_worker_id: string }
+        Returns: {
+          account_id: string
+          attempt_count: number
+          import_session_id: string
+          job_id: string
+          job_type: string
+          payload: Json
+        }[]
+      }
       claim_media_job: {
+        Args: { p_lease_seconds?: number; p_worker_id: string }
+        Returns: {
+          account_id: string
+          attempt_count: number
+          job_id: string
+          job_type: string
+          max_attempts: number
+          media_asset_id: string
+          payload: Json
+        }[]
+      }
+      claim_media_preview_job: {
         Args: { p_lease_seconds?: number; p_worker_id: string }
         Returns: {
           account_id: string
@@ -1882,6 +1908,10 @@ export type Database = {
         }
         Returns: number
       }
+      get_import_progress: {
+        Args: { p_account_id: string; p_session_id: string }
+        Returns: Json
+      }
       record_import_record_failure: {
         Args: {
           p_failure_code: string
@@ -1919,6 +1949,14 @@ export type Database = {
         }
         Returns: number
       }
+      renew_import_prepare_lease: {
+        Args: {
+          p_job_id: string
+          p_lease_seconds?: number
+          p_worker_id: string
+        }
+        Returns: boolean
+      }
       replace_import_resolution: {
         Args: {
           p_account_id: string
@@ -1929,6 +1967,14 @@ export type Database = {
         Returns: number
       }
       retry_import_commit: {
+        Args: {
+          p_account_id: string
+          p_expected_version: number
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      retry_import_prepare: {
         Args: {
           p_account_id: string
           p_expected_version: number
@@ -2000,6 +2046,13 @@ export type Database = {
         }
         Returns: number
       }
+      set_own_locale: {
+        Args: { p_locale_code: string }
+        Returns: {
+          locale_code: string
+          preference_version: number
+        }[]
+      }
       set_wardrobe_item_state: {
         Args: {
           p_account_id: string
@@ -2027,6 +2080,28 @@ export type Database = {
           p_worker_id: string
         }
         Returns: string
+      }
+      update_own_account_profile: {
+        Args: { p_display_name: string; p_expected_version: number }
+        Returns: {
+          account_id: string
+          account_version: number
+          display_name: string
+        }[]
+      }
+      update_own_regional_preferences: {
+        Args: {
+          p_expected_version: number
+          p_timezone_name: string
+          p_units_code: string
+          p_week_starts_on: number
+        }
+        Returns: {
+          preference_version: number
+          timezone_name: string
+          units_code: string
+          week_starts_on: number
+        }[]
       }
     }
     Enums: {

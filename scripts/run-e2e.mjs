@@ -26,7 +26,7 @@ if (!environment.SUPABASE_SECRET_KEY || !environment.NEXT_PUBLIC_SUPABASE_PUBLIS
     SUPABASE_SECRET_KEY: local.SECRET_KEY ?? local.SERVICE_ROLE_KEY,
   };
 }
-environment.APP_ORIGIN ??= "http://127.0.0.1:3000";
+environment.APP_ORIGIN ??= environment.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
 
 const build = spawnSync("pnpm", ["build"], { env: environment, stdio: "inherit" });
 if (build.status !== 0) process.exit(build.status ?? 1);

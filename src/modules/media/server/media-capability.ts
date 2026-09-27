@@ -163,9 +163,12 @@ export async function removeBindingCapability(
   return Number(data);
 }
 
-export async function claimMediaJob(workerId: string) {
+export async function claimMediaJob(workerId: string, previewOnly = false) {
   const { data, error } = await createMediaServiceClient()
-    .rpc("claim_media_job", { p_worker_id: workerId, p_lease_seconds: 180 })
+    .rpc(previewOnly ? "claim_media_preview_job" : "claim_media_job", {
+      p_worker_id: workerId,
+      p_lease_seconds: 180,
+    })
     .maybeSingle();
   if (error) capabilityFailure("media.worker.claim_failed", error);
   return data;

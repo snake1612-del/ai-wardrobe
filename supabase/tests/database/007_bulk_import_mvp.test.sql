@@ -176,7 +176,7 @@ update public.accounts
 set state = 'restricted'
 where id = '00000000-0000-0000-0000-000000000281';
 select is(
-  (select count(*)::integer from public.claim_import_job('import-worker-restricted', 120)),
+  (select count(*)::integer from public.claim_import_prepare_job('import-worker-restricted', 120)),
   0,
   'restricted account cannot start Prepare or commit work'
 );
@@ -184,7 +184,7 @@ update public.accounts
 set state = 'active'
 where id = '00000000-0000-0000-0000-000000000281';
 create temporary table parse_claim as
-select * from public.claim_import_job('import-worker-prepare', 120);
+select * from public.claim_import_prepare_job('import-worker-prepare', 120);
 select is((select job_type from parse_claim), 'import.parse', 'worker claims Prepare');
 select is(
   public.stage_import_asset(
@@ -347,6 +347,10 @@ select is(
   'browser cannot read private archive objects directly'
 );
 reset role;
+-- Prioritize only this fictional job over retained local cleanup jobs.
+update public.jobs set available_at = now() - interval '100 years'
+where import_session_id = '00000000-0000-0000-0000-000000000381'
+  and job_type = 'import.commit';
 
 create temporary table commit_claim as
 select * from public.claim_import_job('import-worker-commit', 120);
@@ -392,6 +396,9 @@ select is((select state from finalized), 'completed', 'all successful records co
 select is((select succeeded from finalized), 1, 'Results report successful records item by item');
 create temporary table cleanup_claim as
 select * from public.claim_import_job('import-worker-cleanup', 120);
+update public.jobs set available_at = now() - interval '100 years'
+where import_session_id = '00000000-0000-0000-0000-000000000381'
+  and job_type = 'import.cleanup';
 select is((select job_type from cleanup_claim), 'import.cleanup', 'worker claims terminal cleanup');
 select is(
   (select state from public.import_sessions where id = '00000000-0000-0000-0000-000000000381'),
@@ -467,6 +474,9 @@ select is(
 );
 create temporary table cancelled_cleanup_claim as
 select * from public.claim_import_job('import-worker-cancel-cleanup', 120);
+update public.jobs set available_at = now() - interval '100 years'
+where import_session_id = '00000000-0000-0000-0000-000000000382'
+  and job_type = 'import.cleanup';
 select is((select job_type from cancelled_cleanup_claim), 'import.cleanup', 'cancelled session exposes only cleanup work');
 select is(
   (select state from public.import_sessions where id = '00000000-0000-0000-0000-000000000382'),

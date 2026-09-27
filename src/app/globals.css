@@ -60,6 +60,10 @@ html {
   text-size-adjust: 100%;
 }
 
+.text-inverse {
+  color: var(--aw-text-inverse) !important;
+}
+
 body {
   min-height: 100vh;
   margin: 0;

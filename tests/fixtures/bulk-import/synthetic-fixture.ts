@@ -201,6 +201,7 @@ export async function createSyntheticImportFixture(): Promise<Buffer> {
     .png()
     .toBuffer();
   return createSyntheticZip([
+    { name: "fictional/", bytes: Buffer.alloc(0), unixMode: 0o040755 },
     { name: "fictional/ordinary_front.jpg", bytes: ordinaryFront },
     { name: "fictional/ordinary_back.jpg", bytes: ordinaryBack },
     { name: "fictional/variant_catalog.png", bytes: variant },

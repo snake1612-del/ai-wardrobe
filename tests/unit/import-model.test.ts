@@ -40,7 +40,7 @@ describe("Bulk Import contract", () => {
   it("parses the executable image-only ZIP fixture without using names as identity", async () => {
     const entries = readImageOnlyZip(await createSyntheticImportFixture());
     expect(entries).toHaveLength(7);
-    expect(entries.map(({ ordinal }) => ordinal)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(entries.map(({ ordinal }) => ordinal)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(entries[0]?.bytes.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
   });
 
@@ -203,12 +203,43 @@ describe("Bulk Import contract", () => {
 
   it.each([
     ["path traversal", "../escape.jpg", 0o100644, "zip_path_traversal"],
+    ["nested path traversal", "fictional/../escape.jpg", 0o100644, "zip_path_traversal"],
+    ["Windows path traversal", "fictional\\..\\escape.jpg", 0o100644, "zip_path_traversal"],
     ["nested archive", "fictional/payload.zip", 0o100644, "nested_archive_rejected"],
     ["symlink", "fictional/link.jpg", 0o120777, "zip_link_or_device_rejected"],
     ["executable", "fictional/run.jpg", 0o100755, "zip_executable_rejected"],
   ])("rejects %s entries before extraction", (_label, name, unixMode, code) => {
     const archive = createSyntheticZip([{ name, unixMode, bytes: Buffer.from("not-executed") }]);
     expect(() => readImageOnlyZip(archive)).toThrow(code);
+  });
+
+  it("ignores safe explicit directory entries without treating them as traversal", () => {
+    const archive = createSyntheticZip([
+      {
+        name: "fictional-unicode-слой/",
+        unixMode: 0o040755,
+        bytes: Buffer.alloc(0),
+      },
+      {
+        name: "fictional-unicode-слой/view.jpg",
+        unixMode: 0o100644,
+        bytes: Buffer.from("fictional-image"),
+      },
+    ]);
+    expect(readImageOnlyZip(archive)).toEqual([
+      expect.objectContaining({ ordinal: 1, privateName: "fictional-unicode-слой/view.jpg" }),
+    ]);
+  });
+
+  it("rejects a directory entry that contains a payload", () => {
+    const archive = createSyntheticZip([
+      {
+        name: "fictional/",
+        unixMode: 0o040755,
+        bytes: Buffer.from("not-a-directory-payload"),
+      },
+    ]);
+    expect(() => readImageOnlyZip(archive)).toThrow("zip_directory_entry_invalid");
   });
 
   it("rejects encrypted and corrupt archives", () => {

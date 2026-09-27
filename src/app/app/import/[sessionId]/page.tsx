@@ -19,6 +19,7 @@ export default async function ImportReviewPage({
   if (!review) notFound();
   return (
     <ImportReview
+      key={`${review.session.id}:${review.session.state}:${review.assets.length}`}
       sessionId={review.session.id}
       initialState={review.session.state as ImportSessionState}
       initialVersion={Number(review.session.version)}

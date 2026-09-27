@@ -72,11 +72,13 @@ async function removeIdentity(userId: string) {
 
 async function signUp(page: Page, email: string, password: string) {
   await page.goto("/auth");
+  await page.getByRole("button", { name: "Создать аккаунт", exact: true }).click();
   const form = page
     .locator("form")
     .filter({ has: page.getByRole("heading", { name: "Создать аккаунт" }) });
   await form.getByLabel("Email").fill(email);
-  await form.getByLabel("Пароль").fill(password);
+  await form.getByLabel("Пароль", { exact: true }).fill(password);
+  await form.getByLabel("Подтвердите пароль").fill(password);
   await form.getByRole("button", { name: "Создать аккаунт" }).click();
   await expect(page).toHaveURL(/\/app$/u);
 }
@@ -311,6 +313,7 @@ test("real recovery email completes PKCE callback and replaces the password", as
   await expect(page).toHaveURL(/\/auth\/update-password$/u);
   expect(new URL(page.url()).searchParams.has("code")).toBe(false);
   await page.getByLabel("Новый пароль").fill(replacementPassword);
+  await page.getByLabel("Подтвердите новый пароль").fill(replacementPassword);
   await page.getByRole("button", { name: "Сохранить пароль" }).click();
   await expect(page).toHaveURL(/\/app$/u);
   await logout(page);

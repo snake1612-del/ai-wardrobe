@@ -1,18 +1,16 @@
 "use client";
-
+import { useI18n } from "@/i18n/context";
 export default function WardrobeError({ reset }: Readonly<{ reset: () => void }>) {
+  const { t } = useI18n();
   return (
-    <div
-      role="alert"
-      className="rounded-xl border border-[var(--aw-error)] bg-[var(--aw-error-surface)] p-8"
-    >
-      <h1 className="text-2xl font-semibold">Гардероб не загрузился</h1>
-      <p className="mt-2">Приватные данные не были показаны. Попробуйте запрос ещё раз.</p>
+    <div className="mx-auto max-w-3xl rounded-xl bg-[var(--aw-error-surface)] p-6 text-[var(--aw-error)]">
+      <h1 className="text-2xl font-semibold">{t("Гардероб не загрузился")}</h1>
+      <p className="mt-2">{t("Приватные данные не были показаны. Попробуйте запрос ещё раз.")}</p>
       <button
-        className="mt-5 min-h-12 rounded-lg bg-accent px-5 font-semibold text-white"
+        className="mt-5 min-h-12 rounded-lg border border-current px-5 font-semibold"
         onClick={reset}
       >
-        Повторить
+        {t("Повторить")}
       </button>
     </div>
   );

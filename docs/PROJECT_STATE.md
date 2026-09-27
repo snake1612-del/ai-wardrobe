@@ -1,11 +1,11 @@
 # AI Wardrobe — Project State
 
-**Дата:** 2026-09-18
+**Дата:** 2026-09-27
 **Статус:** Phase 8 approved: YES / Phase 9 approved: YES — APPROVE WITH WARNINGS / Phase 10 approved: YES — `APPROVE WITH WARNINGS` / production deployment: NOT RUN
 
 # Current Phase
 
-**Phase 10 — Bulk Import Source Audit & Contract Freeze — Source Audit complete / D-099 accepted / Bulk Import MVP implemented / technical gate PASS / external review `APPROVE WITH WARNINGS` / explicitly approved / production deployment NOT RUN**
+**Phase 10 — Bulk Import Source Audit & Contract Freeze — approved with warnings. Post-approval profile, ru/en i18n, account settings and documentation/copy work are included in the current GitHub publication candidate. Production deployment is NOT RUN; Phase 11 is NOT STARTED.**
 
 # Completed
 
@@ -34,6 +34,12 @@
 - До sealed Confirm production-domain writes отсутствуют; account scope server-derived, exact-origin CSRF и known-ID User A/User B isolation сохраняются. Filename/hash/similarity не являются item identity, а ImageView и AppearanceVariant остаются отдельными измерениями.
 - Phase 10 local gate пройден: format, lint, typecheck, 80/80 unit, clean replay 14 migrations, DB lint, 208/208 pgTAP, real Storage API integration, stable generated types, 40/40 Playwright desktop/mobile, accessibility, 32-table RLS inventory, secret scan, production build и `git diff --check` — PASS.
 - Independent Phase 10 review завершён с outcome `APPROVE WITH WARNINGS`: P0/P1 отсутствуют; P2 по декларативному synthetic fixture, Review media-readiness polling и cross-project E2E state collision исправлены исполняемыми regressions и повторным 40/40 browser gate. Пользователь явно утвердил Phase 10 2026-09-18 с перечисленными ниже warnings.
+- Post-approval local Bulk Import UX repair: `pnpm dev` now supervises parse/thumbnail-only workers, shows bounded private progress and owner-scoped safe Prepare retry; automatic claims exclude Confirm and cleanup. A retained staged ZIP reached Review with 125/125 private thumbnails and no import records; no re-upload, reset or Confirm was run.
+- The repair adds local migrations 015–018. Format, lint, typecheck, 100/100 unit, DB lint, 260/260 rollback-scoped pgTAP, secret scan and `git diff --check` passed. An isolated shadow-database replay of the then-current 18 migrations found no schema drift; a read-only anonymous desktop/mobile Playwright smoke passed 2/2; production build passed. Owner-authenticated visual Review of all thumbnails, the full import Playwright flow and hosted operations remain unverified for this post-approval patch; the earlier 14-migration approval gate above remains historical.
+- Post-approval account-profile work: protected `/app/profile`, owner-derived versioned display name, confirmed Auth email change, current-password-verified replacement, private account API and migration 019 are implemented. An isolated authenticated browser flow passed display-name save/reload, PKCE email change, password change and logout/re-login; only its fictional identity and linked account were removed.
+- Russian/English i18n: единый словарь с русским fallback, SSR cookie для anonymous и owner-scoped `account_preferences.locale_code` для authenticated, exact-origin locale mutation, reload/logout/login persistence и локализованные auth, wardrobe, import, profile, settings, system/a11y states. Migration 020, targeted locale pgTAP and isolated desktop/mobile Playwright with axe passed; no real identity, `db:reset`, Import Confirm or production deployment was used.
+- Account Settings adds protected `/app/settings` and migration 021. Locale, IANA timezone, metric/imperial units and Monday/Sunday week start persist in owner-scoped `account_preferences`; `update_own_regional_preferences` derives the owner from `auth.uid()`, validates input, is idempotent for unchanged values and uses optimistic version conflicts. The current application gate passed 117/117 unit tests, and isolated settings/i18n Playwright passed 6/6 desktop/mobile flows with axe; only fictional identities were used and removed.
+- Documentation & Product Copy synchronizes README, architecture/database/security/testing/decision records and local/preview/production instructions with the implemented routes and 21 migrations. User-facing home/import copy removes stale Phase 7 and internal workflow jargon while preserving the same i18n mechanism and business contracts. Markdown links, scripts, routes and file references passed static checks; format, lint, typecheck, 117/117 unit, secret scan, production build and `git diff --check` passed. No database, Storage, browser identity or Import Confirm operation was used.
 - Реализован Phase 9 Private Media Foundation: authenticated TUS, private Storage RLS, server-derived immutable paths, quarantined validation/processing, три WebP rendition, authorized same-origin delivery и versioned gallery mutations.
 - Phase 9 local gate пройден: clean replay 13 миграций, DB lint, 146/146 pgTAP, real Storage API integration, stable generated types, 65/65 unit, 36/36 Playwright desktop/mobile, accessibility, repository/browser-bundle secret scan, schema inventory и production build — PASS.
 - Phase 9 external review outcome — `APPROVE WITH WARNINGS`; пользователь явно утвердил Phase 9 с перечисленными ниже ограничениями.
@@ -363,11 +369,11 @@ Technical criteria below passed locally on 2026-09-17. Independent review findin
 
 # Next Step
 
-**Опубликовать approved Phase 10 snapshot в отдельной ветке и открыть Pull Request. Merge и production deployment требуют отдельного разрешения; Phase 11 не начинать.**
+**Publication candidate готов к локальному commit. До push в production-ветку нужно подтвердить Vercel project/production branch и наличие пяти обязательных переменных по именам, а также отдельно применить migrations 015–021 к целевому Supabase project. Независимый сбой Bulk Import pgTAP `007_bulk_import_mvp.test.sql` (`invalid staged object path`) остаётся отдельным defect. Production deployment и Phase 11 не начинать без закрытия этих gates.**
 
 # Gate
 
-**Phase 8 is approved. Phase 9 is approved with warnings. D-099 is accepted; Phase 10 Bulk Import MVP technical gate passed, external review outcome is `APPROVE WITH WARNINGS`, and Phase 10 is explicitly approved. Production deployment is NOT RUN.**
+**Phase 8 is approved. Phase 9 and Phase 10 are approved with documented warnings. Profile, i18n and settings are local post-approval additions and do not change those historical gates. The known Bulk Import pgTAP 007 failure is open. Production deployment is NOT RUN and Phase 11 is NOT STARTED.**
 
 # Phase 9 Acceptance Checklist
 

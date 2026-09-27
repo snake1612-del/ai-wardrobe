@@ -10,12 +10,12 @@ Tests prove server and database boundaries, not the visibility of a UI control. 
 
 1. Unit tests for pure validation, error and privacy helpers.
 2. PostgreSQL integration tests for constraints, search and authorization.
-3. Browser smoke tests for the compiled shell and safe operational endpoint.
-4. Manual and adversarial checks added alongside each future product capability.
+3. Browser tests for authenticated product flows, account isolation, localization and accessibility.
+4. Manual and adversarial checks for environment-specific or destructive operational behavior.
 
 # Unit Tests
 
-Vitest executes `tests/unit`. Coverage includes environment validation, stable application errors, structured-log redaction, safe auth and Wardrobe return-path allowlisting, canonical exact-origin validation, persistent owner-bound browser-state cleanup, ClothingItem/media validation and Bulk Import parser, normalization, issue, grouping, variant/view and resolution invariants. Run `pnpm test`.
+Vitest executes `tests/unit`. Coverage includes environment validation, stable application errors, structured-log redaction, auth/password and return-path policy, canonical exact-origin validation, owner-bound browser-state cleanup, profile/settings validation, ru/en dictionary completeness, ClothingItem/media validation and Bulk Import parser, normalization, issue, grouping, variant/view, Storage retry and lease-renewal invariants. Run `pnpm test`.
 
 # Database Integration Tests
 
@@ -39,10 +39,15 @@ The test changes to the real `authenticated` role and supplies a synthetic JWT s
 The database release gate is:
 
 ```text
-fresh local stack → replay all fourteen migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
+disposable local stack → replay all 21 migrations → apply controlled seed → lint schema → run pgTAP → generate TypeScript types
 ```
 
 CI repeats this from an empty runner. No manual dashboard step is accepted as schema history.
+The approved Phase 10 gate covered fourteen migrations. The current publication candidate adds migrations 015–018 for long Prepare leases, bounded Prepare retry, preview-worker separation and owner-scoped progress; migration 019 for profile data; migration 020 for locale; and migration 021 for regional settings. The latest generated types were stable and the targeted profile/locale/settings suites passed, but this is not a new full release gate.
+
+For local manual review, `pnpm dev` supervises preview-only `import.parse` and media validation/processing workers. It does not auto-claim `import.commit`, import cleanup or media cleanup. Production scheduling remains unvalidated.
+
+The retained local database currently exposes one independent known failure in `supabase/tests/database/007_bulk_import_mvp.test.sql`: `invalid staged object path`. The failure is outside Documentation & Product Copy and must not be hidden by changing docs, unrelated fixtures or Bulk Import logic.
 
 # Browser Smoke Tests
 
@@ -50,7 +55,7 @@ Playwright runs the compiled application in desktop and mobile Chromium. In addi
 
 # Accessibility Tests
 
-`@axe-core/playwright` checks the public foundation shell, auth page, Wardrobe/media states and the Bulk Import review flow in desktop/mobile viewports. Semantic HTML, labelled fields, pending/error feedback, `lang="ru"`, keyboard focus, skip navigation and reduced-motion styling remain manual review companions.
+`@axe-core/playwright` checks the public shell, auth, Wardrobe/media, Bulk Import review, profile and settings in desktop/mobile viewports. Semantic HTML, labelled fields, pending/error feedback, correct `lang` for ru/en, keyboard focus, skip navigation and reduced-motion styling remain manual review companions.
 
 # Security Regression Tests
 
@@ -86,7 +91,7 @@ Phase 8 adds Wardrobe unit, database and real browser coverage. On 2026-09-17 th
 - 32/32 Playwright tests across desktop/mobile, including the Phase 8 vertical-slice/isolation/account-state tests, real hostile-Origin replay and expanded Wardrobe accessibility coverage;
 - `pnpm security:secrets` and `git diff --check`.
 
-Independent Phase 8 review initially returned `CHANGES REQUIRED`; no P0 was found, and all P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.
+Independent Phase 8 review initially returned `CHANGES REQUIRED`; no P0 was found, and all P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. At that historical gate, Phase 9 had not started; its later gate is recorded below.
 
 # Phase 9 Media Gate
 
@@ -109,3 +114,27 @@ Migration 14 adds the private `wardrobe-imports` bucket, exact-path authenticate
 On 2026-09-18 the Phase 10 local gate passed: formatting, lint and typecheck; 80/80 unit assertions; clean replay of all 14 migrations; DB lint with no schema errors; 208/208 pgTAP assertions; real Storage API integration; byte-for-byte stable generated database types; 40/40 Playwright desktop/mobile tests including axe accessibility, hostile-Origin and known-ID isolation; 32-table RLS schema inventory; repository plus 59-file browser-bundle secret scan; production build; and `git diff --check`.
 
 The independent review found and corrected stale-worker/cancellation, terminal cleanup, skipped-UUID casting, variant/media binding conflicts, inactive category/account/archived-target checks, ZIP parser bounds, blind Review, fabricated default names, declarative-only fixture coverage, Review media-readiness polling and desktop/mobile E2E state collisions before the final gate. No P0/P1/P2 remains open. Outcome: `APPROVE WITH WARNINGS`; the user explicitly approved Phase 10 on 2026-09-18. Hosted Storage/production scheduling were not validated; compressed archive parts are currently held in worker memory; generated type output remains stable despite the inherited nonfatal `MaxListenersExceededWarning`; source identity remains manual because the real archive has no stable item IDs. Production deployment and Phase 11 are NOT RUN.
+
+# Post-approval Account Profile Gate
+
+The post-Phase-10 account-profile patch adds migration 019, owner-derived display-name mutation, confirmed Auth email change, current-password-verified replacement, private account API fields and accessible loading/success/error UI. Targeted validation passed: 3/3 model tests, 14/14 rollback-scoped pgTAP assertions, database lint, generated types, typecheck, anonymous route/API denial, private/no-store and nosniff headers, secret scan and production build.
+
+The full database suite currently reports one pre-existing Bulk Import assertion failure in `007_bulk_import_mvp.test.sql` when run against retained local import jobs; the new `012_account_profile.test.sql` suite passes. Bulk Import was not changed to mask that state.
+
+The isolated authenticated browser test passed display-name save/reload, private API, PKCE email change, current-password-verified replacement, logout/re-login and accessibility. It used one fictional identity and removed only that identity and its linked account after the run.
+
+# Russian/English i18n Gate
+
+The post-Phase-10 i18n patch adds migration 020 and D-100. It uses a single ru/en dictionary, Russian fallback, an SSR-visible HTTP-only locale cookie for anonymous visitors and owner-derived account_preferences.locale_code persistence through set_own_locale. No account identifier is accepted from the browser.
+
+Validation passed without db:reset: formatting, lint, typecheck, targeted locale pgTAP assertions, production build and isolated Playwright desktop/mobile flows. The browser flow covered anonymous switching, reload, authenticated persistence, logout/login, auth, dashboard, empty wardrobe, new item, Bulk Import, profile and settings routes, no mixed Cyrillic in English mode and axe accessibility. Only fictional identities were used and removed; Import workers and Confirm were not run.
+
+# Account Settings Gate
+
+Migration 021 adds constraints and authenticated-only `update_own_regional_preferences`. Targeted tests cover IANA timezone validation, metric/imperial units, Monday/Sunday week start, idempotent same-value save, optimistic conflict, anonymous/restricted-account denial and User A/User B isolation. The combined current unit gate passed 117/117 assertions. Isolated settings/i18n Playwright passed 6/6 desktop/mobile flows with axe, reload and logout/login persistence; its fictional identities were removed.
+
+# Documentation and Copy Checks
+
+Documentation-only verification includes Markdown formatting, internal relative-link targets, referenced repository files, documented package scripts, route inventory, stale Phase 7-only claims, the repository secret scan and `git diff --check`. On 2026-09-27 the check covered 12 Markdown files, 10 internal links, 17 package commands, eight principal routes, seven explicit file references and all 21 migration files. Format, lint, typecheck, 117/117 unit, secret scan, production build and `git diff --check` passed.
+
+This gate did not run pgTAP, Storage integration or Playwright and did not reset a database, upload an archive, execute Import Confirm or mutate an account. The known retained-database failure in `007_bulk_import_mvp.test.sql` remains independent and open.

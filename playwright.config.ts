@@ -5,6 +5,12 @@ const publishableKey =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
   "sb_publishable_synthetic_foundation_test_key_0000000000000000";
 const secretKey = process.env.SUPABASE_SECRET_KEY;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
+const webServerPort = new URL(baseURL).port || "3000";
+const reuseExistingServer =
+  process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === undefined
+    ? !process.env.CI
+    : process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -12,7 +18,7 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL: "http://127.0.0.1:3000", trace: "on-first-retry" },
+  use: { baseURL, trace: "on-first-retry" },
   projects: [
     { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
@@ -21,13 +27,14 @@ export default defineConfig({
     command: "pnpm start",
     env: {
       APP_ENV: "test",
-      APP_ORIGIN: "http://127.0.0.1:3000",
+      PORT: webServerPort,
+      APP_ORIGIN: process.env.APP_ORIGIN ?? baseURL,
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
       NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
       ...(secretKey ? { SUPABASE_SECRET_KEY: secretKey } : {}),
     },
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    url: baseURL,
+    reuseExistingServer,
     timeout: 120_000,
   },
 });

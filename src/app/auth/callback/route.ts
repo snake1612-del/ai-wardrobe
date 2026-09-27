@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createSupabaseRouteClient } from "@/infrastructure/supabase/route-client";
+import { parseLocale } from "@/i18n/dictionary";
+import { localeCookieOptions, LOCALE_COOKIE, resolveAuthenticatedLocale } from "@/i18n/server";
 import { getSafeAuthRedirectPath } from "@/modules/account/auth-redirect";
 import { bootstrapAccountForVerifiedUser } from "@/modules/account/server/account-bootstrap";
 import { getApplicationOrigin } from "@/platform/env/server";
@@ -29,7 +31,10 @@ export async function GET(request: NextRequest) {
   const { data, error: userError } = await client.auth.getUser();
   if (userError || !data.user) return authError("invalid-session");
   try {
-    await bootstrapAccountForVerifiedUser(data.user.id);
+    const account = await bootstrapAccountForVerifiedUser(data.user.id);
+    const fallback = parseLocale(request.cookies.get(LOCALE_COOKIE)?.value) ?? "ru";
+    const locale = await resolveAuthenticatedLocale(client, account.id, fallback);
+    response.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions());
   } catch {
     return authError("account-unavailable");
   }

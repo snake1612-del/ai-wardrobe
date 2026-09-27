@@ -15,6 +15,14 @@ describe("isTrustedSameOrigin", () => {
   });
 
   it.each([
+    ["http://127.0.0.1:3000", "127.0.0.1:3000"],
+    ["http://172.27.195.61:3000", "172.27.195.61:3000"],
+  ])("accepts local aliases only when explicitly enabled", (origin, host) => {
+    expect(isTrustedSameOrigin(origin, host, "http", "http://localhost:3000", true)).toBe(true);
+    expect(isTrustedSameOrigin(origin, host, "http", "http://localhost:3000")).toBe(false);
+  });
+
+  it.each([
     [null, "wardrobe.example", "https", "https://wardrobe.example"],
     ["https://wardrobe.example", null, "https", "https://wardrobe.example"],
     ["https://wardrobe.example", "wardrobe.example", null, "https://wardrobe.example"],

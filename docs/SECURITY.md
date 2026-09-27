@@ -59,6 +59,9 @@ flowchart LR
 - Session cookies use provider/framework-recommended secure attributes and HTTPS. Cross-site behavior is minimized and reviewed with the CSRF model.
 - Protected routes are convenience only; every mutation/read endpoint independently authenticates.
 - Session refresh and authenticated responses must bypass shared caching.
+- Profile display-name mutation is exposed only through `update_own_account_profile`, which accepts no owner/account identifier and resolves the active owner from the verified `auth.uid()`; optimistic version conflicts fail closed.
+- Email and password changes use the current user-scoped Auth session and exact-origin server actions. Password change explicitly verifies the current password before replacement; email redirects return only through the allowlisted same-origin PKCE callback.
+- Locale selection is presentation state, never authorization authority. Anonymous locale is an HTTP-only same-site cookie; authenticated persistence uses set_own_locale, derives the active account from auth.uid(), accepts no owner ID, validates ru|en, requires exact-origin mutation and rejects external/protocol-relative return paths.
 - Logout/account switch clears recoverable user-scoped local data, image references and signed URLs.
 - Recovery and signup responses avoid account enumeration as far as provider-supported flows allow.
 - Re-authentication is required for account deletion and other identity-level actions; MFA can be introduced according to risk without changing domain ownership.
@@ -339,7 +342,7 @@ Phase 4 security review result: the approved architecture has no intended browse
 - Baseline headers include content-type sniffing protection, frame denial, no-referrer and restrictive camera/microphone/geolocation policy. A robust nonce/hash CSP is deferred until actual scripts/integrations exist; no decorative policy is claimed.
 - Cookie-backed mutations added in later phases must verify session, owner and allowed Origin/request intent. SameSite cookies and Next.js behavior are defense in depth, not the complete CSRF model.
 - Structured logging accepts scalar context only and removes token/cookie/secret/password/signed URL/note/payload/photo/image-shaped keys. Raw database errors remain inside the server error mapping boundary.
-- No Storage bucket or public object policy is created. Direct upload, object-key layout and delivery TTL remain explicit later gates.
+- At the Phase 6 gate, no Storage bucket or public object policy existed; later Phase 9 work introduced the private buckets and authorized delivery documented below.
 
 Security checks are `pnpm test`, `pnpm test:db` and `pnpm test:e2e`. The pgTAP matrix uses actual synthetic authenticated role/JWT context and verifies known-ID isolation plus absence of direct mutation grants. On 2026-09-15 the local clean replay, DB lint, all 37 pgTAP assertions and the 6-test browser/axe suite passed; external Phase 6 review remains required before approval.
 
@@ -376,7 +379,7 @@ Local Phase 8 security gate passed with 90/90 pgTAP, 51/51 unit, 32/32 Playwrigh
 
 Local WSL development may use canonical HTTP `APP_ORIGIN` only for loopback or RFC1918 IPv4 when both the runtime is non-production and `APP_ENV=local`; the parser rejects public HTTP and every non-HTTP(S) scheme. Production keeps the HTTPS-only policy, and Next development-origin configuration is omitted from production builds.
 
-Independent Phase 8 security review initially returned `CHANGES REQUIRED`; the P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. Phase 9 is next and not started.
+Independent Phase 8 security review initially returned `CHANGES REQUIRED`; the P1/P2/P3 findings were remediated and locally revalidated. The final repeat review outcome is `APPROVE`, Phase 8 approval is YES and production deployment is NOT RUN. At that historical gate, Phase 9 had not started; its later approved implementation is documented below.
 
 # Phase 9 Private Media Security Contract
 
@@ -407,3 +410,18 @@ Independent review findings around replay/retry state transitions, actual rendit
 - Logs and errors expose bounded codes and safe counts only. Raw archive paths, filenames, notes, pixels, tokens, URLs and provider payloads are not logged.
 
 The final Phase 10 gate proved anonymous/User A/User B isolation, exact-origin/hostile-Origin behavior, IDOR resistance, no-pre-Confirm domain writes, duplicate completion/Confirm, worker lease/retry, overwrite/read denial, item-level conflict handling, accessibility, secret scanning and generated-type stability. The independent security review found no remaining P0/P1/P2 and returned `APPROVE WITH WARNINGS`; the user explicitly approved Phase 10 on 2026-09-18. Hosted Storage/production scheduling and operational cleanup evidence, whole-part worker memory sizing, stable-ID absence/manual Resolve and the known nonfatal type-generator warning remain accepted gates. Production deployment is NOT RUN and Phase 11 is NOT STARTED.
+
+# Current Profile, Locale and Settings Security
+
+Profile, locale and regional-settings additions preserve the existing Auth and account boundaries:
+
+- `/app/profile` and `/app/settings` require a verified session and active account. Anonymous, restricted and deleting accounts cannot obtain or mutate preferences.
+- Display-name and regional-preference mutations derive `account_id` from the verified identity. Their browser contracts do not accept `account_id`, `user_id` or `owner_id`.
+- Email change uses the provider's confirmation/PKCE flow. Password replacement requires the current password and applies the shared 8–128 character rule with at least one Latin letter.
+- Anonymous locale is presentation state in the HTTP-only, same-site `aw-locale` cookie. Authenticated locale is loaded from and saved to the current owner's `account_preferences.locale_code`.
+- `set_own_locale` and `update_own_regional_preferences` are authenticated-only functions with empty `search_path`. Regional settings validate an IANA timezone, metric/imperial units and Monday/Sunday week start; same-value replay is idempotent and changed values require the exact version.
+- Locale and settings Server Actions retain exact-origin validation and safe local return paths. Locale is resolved on the server and passed to the client provider for the first render, preventing a browser-storage hydration race.
+
+Environment separation is also a security boundary. Local secrets belong only in ignored `.env.local`; preview and production require separate Supabase projects and Vercel environment variables. Preview must use synthetic data. Production deployment is not run, and hosted Storage, worker scheduling, cleanup, backups, email and retention are still release gates.
+
+The independent retained-database pgTAP failure in `007_bulk_import_mvp.test.sql` (`invalid staged object path`) remains open. Documentation/copy work does not weaken the path validation or reinterpret that failure as a passing security check.

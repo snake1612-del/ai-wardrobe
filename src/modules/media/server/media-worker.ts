@@ -135,8 +135,9 @@ async function cleanupJob(workerId: string, jobId: string, accountId: string, as
 
 export async function runMediaWorkerOnce(
   workerId: string,
+  previewOnly = false,
 ): Promise<"idle" | "processed" | "retry"> {
-  const job = await claimMediaJob(workerId);
+  const job = await claimMediaJob(workerId, previewOnly);
   if (!job) return "idle";
   try {
     if (job.job_type === "media.validate") {

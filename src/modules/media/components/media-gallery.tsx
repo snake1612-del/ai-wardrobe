@@ -7,6 +7,7 @@ import * as tus from "tus-js-client";
 
 import { createSupabaseBrowserClient } from "@/infrastructure/supabase/browser-client";
 import { getPublicEnvironment } from "@/platform/env/public";
+import { useI18n } from "@/i18n/context";
 
 import {
   acceptedMediaTypes,
@@ -36,6 +37,7 @@ async function responseJson(response: Response) {
 }
 
 export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const uploadRef = useRef<tus.Upload | null>(null);
   const [entries, setEntries] = useState(
@@ -248,14 +250,14 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="media-heading" className="text-xl font-semibold">
-            Изображения
+            {t("Изображения")}
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
-            Приватные оригиналы проверяются до публикации.
+            {t("Приватные оригиналы проверяются до публикации.")}
           </p>
         </div>
-        <label className="inline-flex min-h-12 cursor-pointer items-center rounded-lg bg-accent px-4 font-semibold text-white">
-          Добавить изображение
+        <label className="inline-flex min-h-12 cursor-pointer items-center rounded-lg bg-accent px-4 font-semibold text-inverse">
+          {t("Добавить изображение")}
           <input
             className="sr-only"
             type="file"
@@ -271,27 +273,27 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label>
-          <span className="mb-1 block text-sm font-medium">Ракурс</span>
+          <span className="mb-1 block text-sm font-medium">{t("Ракурс")}</span>
           <select
             className="field"
             value={imageView}
             onChange={(event) => setImageView(event.target.value)}
           >
-            <option value="unspecified">Не указан</option>
-            <option value="front">Спереди</option>
-            <option value="back">Сзади</option>
-            <option value="side">Сбоку</option>
-            <option value="detail">Деталь</option>
+            <option value="unspecified">{t("Не указан")}</option>
+            <option value="front">{t("Спереди")}</option>
+            <option value="back">{t("Сзади")}</option>
+            <option value="side">{t("Сбоку")}</option>
+            <option value="detail">{t("Деталь")}</option>
           </select>
         </label>
         <label>
-          <span className="mb-1 block text-sm font-medium">Внешний вид</span>
+          <span className="mb-1 block text-sm font-medium">{t("Внешний вид")}</span>
           <select
             className="field"
             value={appearanceVariantId}
             onChange={(event) => setAppearanceVariantId(event.target.value)}
           >
-            <option value="">Общий для вещи</option>
+            <option value="">{t("Общий для вещи")}</option>
             {variants.map((variant) => (
               <option key={variant.id} value={variant.id}>
                 {variant.label}
@@ -300,13 +302,13 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
           </select>
         </label>
         <label>
-          <span className="mb-1 block text-sm font-medium">Заменить</span>
+          <span className="mb-1 block text-sm font-medium">{t("Заменить")}</span>
           <select
             className="field"
             value={replacesAssetId}
             onChange={(event) => setReplacesAssetId(event.target.value)}
           >
-            <option value="">Добавить новое</option>
+            <option value="">{t("Добавить новое")}</option>
             {readyEntries.map((entry) => (
               <option key={entry.assetId} value={entry.assetId}>
                 {entry.originalFilename ?? entry.imageView}
@@ -319,7 +321,7 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
       <div className="mt-4" aria-live="polite">
         {uploadState.kind === "uploading" ? (
           <div>
-            <p>Загрузка: {uploadState.progress}%</p>
+            <p>{t("Загрузка: {progress}%", { progress: uploadState.progress })}</p>
             <progress className="mt-2 w-full" max={100} value={uploadState.progress}>
               {uploadState.progress}%
             </progress>
@@ -328,28 +330,28 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
               type="button"
               onClick={() => uploadRef.current?.abort()}
             >
-              Отменить
+              {t("Отменить")}
             </button>
           </div>
         ) : uploadState.kind === "completing" ? (
-          <p>Проверяем загруженный объект…</p>
+          <p>{t("Проверяем загруженный объект…")}</p>
         ) : uploadState.kind === "done" ? (
-          <p>Файл загружен. Обработка выполняется в приватной очереди.</p>
+          <p>{t("Файл загружен. Обработка выполняется в приватной очереди.")}</p>
         ) : uploadState.kind === "error" ? (
           <p role="alert" className="text-[var(--aw-error)]">
-            {uploadState.message}
+            {t(uploadState.message)}
           </p>
         ) : null}
       </div>
 
       {entries.length ? (
-        <ul className="mt-5 grid gap-4 sm:grid-cols-2" aria-label="Галерея вещи">
+        <ul className="mt-5 grid gap-4 sm:grid-cols-2" aria-label={t("Галерея вещи")}>
           {entries.map((entry, index) => (
             <li key={entry.bindingId} className="rounded-xl border border-border-subtle p-3">
               <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg bg-surface-muted">
                 {entry.state === "ready" && entry.renditionId ? (
                   <Image
-                    alt={`${entry.imageView === "unspecified" ? "Изображение вещи" : `Ракурс: ${entry.imageView}`}${entry.isPrimary ? ", основное" : ""}`}
+                    alt={`${entry.imageView === "unspecified" ? t("Изображение вещи") : t("Ракурс: {view}", { view: t(entry.imageView) })}${entry.isPrimary ? t(", основное") : ""}`}
                     src={`/api/media/renditions/${entry.renditionId}`}
                     fill
                     unoptimized
@@ -358,15 +360,17 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
                   />
                 ) : (
                   <p className="px-4 text-center text-sm text-text-secondary">
-                    {mediaStateLabel(entry.state, entry.failureCode)}
+                    {t(mediaStateLabel(entry.state, entry.failureCode))}
                   </p>
                 )}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                 {entry.isPrimary ? (
-                  <span className="rounded-full bg-surface-selected px-2 py-1">Основное</span>
+                  <span className="rounded-full bg-surface-selected px-2 py-1">
+                    {t("Основное")}
+                  </span>
                 ) : null}
-                <span>{entry.imageView}</span>
+                <span>{t(entry.imageView)}</span>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {entry.state === "ready" ? (
@@ -377,7 +381,7 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
                       disabled={mutationPending || index === 0}
                       onClick={() => move(index, -1)}
                     >
-                      Раньше
+                      {t("Раньше")}
                     </button>
                     <button
                       type="button"
@@ -385,7 +389,7 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
                       disabled={mutationPending || index === entries.length - 1}
                       onClick={() => move(index, 1)}
                     >
-                      Позже
+                      {t("Позже")}
                     </button>
                     {!entry.isPrimary ? (
                       <button
@@ -394,14 +398,14 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
                         className="underline disabled:opacity-40"
                         onClick={() => void saveGallery(entries, entry.bindingId)}
                       >
-                        Сделать основным
+                        {t("Сделать основным")}
                       </button>
                     ) : null}
                   </>
                 ) : null}
                 {entry.state === "failed" ? (
                   <button type="button" className="underline" onClick={() => void retry(entry)}>
-                    Повторить
+                    {t("Повторить")}
                   </button>
                 ) : null}
                 <button
@@ -410,7 +414,7 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
                   className="text-[var(--aw-error)] underline disabled:opacity-40"
                   onClick={() => void remove(entry)}
                 >
-                  Убрать
+                  {t("Убрать")}
                 </button>
               </div>
             </li>
@@ -418,7 +422,7 @@ export function MediaGallery({ itemId, itemVersion, variants, initialEntries }: 
         </ul>
       ) : (
         <p className="mt-5 rounded-lg bg-surface-muted p-5 text-text-secondary">
-          Изображений пока нет.
+          {t("Изображений пока нет.")}
         </p>
       )}
     </section>

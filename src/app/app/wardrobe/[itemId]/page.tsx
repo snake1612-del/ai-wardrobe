@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { getServerI18n } from "@/i18n/server";
+
 import { MediaGallery } from "@/modules/media/components/media-gallery";
 import { listItemMedia } from "@/modules/media/server/media-queries";
 import { getWardrobeReturnPath } from "@/modules/wardrobe/model";
@@ -19,6 +21,7 @@ export default async function WardrobeItemPage({
   params: Promise<{ itemId: string }>;
   searchParams: Promise<{ from?: string; status?: string; error?: string }>;
 }>) {
+  const { t } = await getServerI18n();
   const route = await params;
   if (!z.string().uuid().safeParse(route.itemId).success) notFound();
   const query = await searchParams;
@@ -43,14 +46,14 @@ export default async function WardrobeItemPage({
   return (
     <div className="mx-auto max-w-4xl">
       <Link href={returnTo} className="text-sm text-accent underline">
-        ← К результатам
+        {t("← К результатам")}
       </Link>
       {query.status === "saved" ? (
         <p
           role="status"
           className="mt-4 rounded-lg bg-[var(--aw-success-surface)] p-4 text-[var(--aw-success)]"
         >
-          Вещь сохранена.
+          {t("Вещь сохранена.")}
         </p>
       ) : null}
       {query.error ? (
@@ -58,29 +61,29 @@ export default async function WardrobeItemPage({
           role="alert"
           className="mt-4 rounded-lg bg-[var(--aw-error-surface)] p-4 text-[var(--aw-error)]"
         >
-          Изменение не применено. Обновите страницу.
+          {t("Изменение не применено. Обновите страницу.")}
         </p>
       ) : null}
       <Surface className="mt-4">
         <div className="grid gap-8 md:grid-cols-[minmax(16rem,2fr)_3fr]">
           <div className="flex aspect-square items-center justify-center rounded-xl bg-surface-muted text-text-secondary">
-            Изображение не добавлено
+            {t("Изображение не добавлено")}
           </div>
           <div>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-text-tertiary">
                   {item.recordState === "draft"
-                    ? "Черновик"
+                    ? t("Черновик")
                     : item.lifecycleState === "archived"
-                      ? "В архиве"
-                      : "Активная вещь"}
+                      ? t("В архиве")
+                      : t("Активная вещь")}
                 </p>
                 <h1 className="mt-1 text-3xl font-semibold">
-                  {item.displayName ?? "Без названия"}
+                  {item.displayName ?? t("Без названия")}
                 </h1>
                 <p className="mt-2 text-text-secondary">
-                  {item.categoryLabel ?? "Без категории"}
+                  {item.categoryLabel ? t(item.categoryLabel) : t("Без категории")}
                   {item.brand ? ` · ${item.brand}` : ""}
                 </p>
               </div>
@@ -88,39 +91,39 @@ export default async function WardrobeItemPage({
                 <ButtonLink
                   href={{ pathname: `/app/wardrobe/${item.id}/edit`, query: { from: returnTo } }}
                 >
-                  Редактировать
+                  {t("Редактировать")}
                 </ButtonLink>
               ) : null}
             </div>
 
             <dl className="mt-8 grid gap-4 sm:grid-cols-2">
               <div>
-                <dt className="text-sm text-text-tertiary">Цвета</dt>
-                <dd>{item.colors.map(({ label }) => label).join(", ") || "Не указаны"}</dd>
+                <dt className="text-sm text-text-tertiary">{t("Цвета")}</dt>
+                <dd>{item.colors.map(({ label }) => t(label)).join(", ") || t("Не указаны")}</dd>
               </div>
               <div>
-                <dt className="text-sm text-text-tertiary">Сезоны</dt>
-                <dd>{item.seasons.map(({ label }) => label).join(", ") || "Не указаны"}</dd>
+                <dt className="text-sm text-text-tertiary">{t("Сезоны")}</dt>
+                <dd>{item.seasons.map(({ label }) => t(label)).join(", ") || t("Не указаны")}</dd>
               </div>
               <div>
-                <dt className="text-sm text-text-tertiary">Материал</dt>
-                <dd>{item.material || "Не указан"}</dd>
+                <dt className="text-sm text-text-tertiary">{t("Материал")}</dt>
+                <dd>{item.material || t("Не указан")}</dd>
               </div>
               <div>
-                <dt className="text-sm text-text-tertiary">Размер</dt>
-                <dd>{item.sizeLabel || "Не указан"}</dd>
+                <dt className="text-sm text-text-tertiary">{t("Размер")}</dt>
+                <dd>{item.sizeLabel || t("Не указан")}</dd>
               </div>
             </dl>
             {item.description ? <p className="mt-6">{item.description}</p> : null}
             {item.notes ? (
               <div className="mt-5 rounded-lg bg-surface-muted p-4">
-                <p className="text-sm font-medium">Приватная заметка</p>
+                <p className="text-sm font-medium">{t("Приватная заметка")}</p>
                 <p className="mt-1">{item.notes}</p>
               </div>
             ) : null}
             {item.variants.length ? (
               <div className="mt-6">
-                <h2 className="font-semibold">Варианты внешнего вида</h2>
+                <h2 className="font-semibold">{t("Варианты внешнего вида")}</h2>
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {item.variants.map((variant) => (
                     <li
@@ -128,7 +131,7 @@ export default async function WardrobeItemPage({
                       key={variant.id}
                     >
                       {variant.label}
-                      {variant.isDefault ? " · основной" : ""}
+                      {variant.isDefault ? t(" · основной") : ""}
                     </li>
                   ))}
                 </ul>
@@ -172,10 +175,10 @@ export default async function WardrobeItemPage({
                 <input type="hidden" name="returnTo" value={detailPath} />
                 <button className="min-h-12 rounded-lg border border-border-strong bg-surface px-5 font-semibold">
                   {item.lifecycleState === "archived"
-                    ? "Восстановить"
+                    ? t("Восстановить")
                     : item.isFavorite
-                      ? "Убрать из избранного"
-                      : "Добавить в избранное"}
+                      ? t("Убрать из избранного")
+                      : t("Добавить в избранное")}
                 </button>
               </form>
               {item.lifecycleState === "active" && item.recordState === "committed" ? (
@@ -185,7 +188,7 @@ export default async function WardrobeItemPage({
                   <input type="hidden" name="action" value="archive" />
                   <input type="hidden" name="returnTo" value={archiveReturnTo} />
                   <button className="min-h-12 rounded-lg px-5 font-semibold text-[var(--aw-error)] underline">
-                    Архивировать
+                    {t("Архивировать")}
                   </button>
                 </form>
               ) : null}

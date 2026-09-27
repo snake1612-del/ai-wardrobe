@@ -1,136 +1,163 @@
 # AI Wardrobe
 
-Private, server-authoritative wardrobe application. The repository contains the Phase 6 project/data foundation and the narrow Phase 7 authentication/privacy foundation; wardrobe product features remain deferred.
+AI Wardrobe is a private, server-authoritative wardrobe application built with Next.js and Supabase. The current repository contains the approved foundations for authentication, Wardrobe Core, private media and the Bulk Import MVP, plus local post-Phase-10 work for profile, Russian/English localization and account settings.
 
-# Current Status
+Production deployment has **not** been run. Hosted Storage, production workers and retention cleanup remain deployment gates.
 
-Phase 7 implementation is present and locally validated. It adds SSR cookie sessions, signup/login/logout/recovery/password replacement, trusted idempotent account bootstrap, a protected shell and User A/B isolation checks. External Phase 7 review remains pending; this document does not mark the phase approved or deployed.
+## What works
 
-# Architecture Summary
+- Email/password signup, login, logout and recovery with SSR cookie refresh, PKCE callbacks and allowlisted redirects. Signup, recovery and password change require 8–128 characters with at least one Latin letter.
+- Profile editing for display name, confirmed email change and current-password-verified password change.
+- A private wardrobe with draft/committed items, search, filters, favorites, archive/restore and optimistic conflict handling.
+- Private JPEG/PNG/WebP media upload, validation, WebP renditions and owner-authorized delivery.
+- Bulk Import for image-only ZIP files: upload, automatic preparation, private thumbnails, manual decisions, preview, explicit confirmation and itemized results.
+- Russian and English UI with an SSR-stable locale; account owners can also save timezone, metric/imperial units and Monday/Sunday week start.
 
-- Next.js App Router with React Server Components by default.
-- Modular monolith: presentation in `src/app`, product boundaries in `src/modules`, cross-cutting policy in `src/platform`, provider adapters in `src/infrastructure` and visual primitives in `src/ui`.
-- Browser → Next.js trusted application layer → database/storage/provider boundary.
-- Controlled hybrid database access: user-context Supabase clients for narrow RLS-protected reads; invariant-heavy writes belong to trusted server commands and transactions added with their product modules.
-- One durable `accounts.id` owns personal data; provider Auth identity is only the identity binding.
+Export, account deletion, onboarding, Outfit Builder, wear tracking, Calendar/Analytics and AI features are not implemented.
 
-# Prerequisites
+## Technology
 
-- Node.js 24 (see `.node-version` and `.nvmrc`).
-- pnpm 11.19.0.
-- Docker Desktop or Podman for the local Supabase stack.
+- Node.js 24 and pnpm 11.19
+- Next.js 16 App Router, React 19 and TypeScript 6
+- Tailwind CSS 4 behind project UI primitives and design tokens
+- Supabase PostgreSQL 17, Auth and private Storage
+- Zod, authenticated TUS upload and pinned Sharp/libvips image processing
+- Vitest, pgTAP, Playwright and axe accessibility checks
 
-# Installation
+The application is a modular monolith:
+
+```text
+src/app/                 Next.js routes, layouts and request boundaries
+src/modules/             Account, wardrobe, media and import modules
+src/platform/            Environment, origin, error and logging policy
+src/infrastructure/      Supabase adapters and generated database types
+src/i18n/                Shared ru/en dictionary and locale resolution
+src/ui/                  Semantic UI primitives
+supabase/migrations/     Ordered database and Storage policy history
+supabase/tests/database/ pgTAP constraints and authorization tests
+tests/unit/              Fast deterministic tests
+tests/e2e/               Browser, isolation and accessibility flows
+docs/                    Product, architecture, security and operations records
+```
+
+## Prerequisites
+
+- Node.js `>=24 <25` (`.node-version` and `.nvmrc`)
+- pnpm `11.19.0`
+- Docker Desktop with WSL integration, or another Docker-compatible runtime supported by the local Supabase CLI
+
+Install the locked dependency graph:
 
 ```bash
 pnpm install --frozen-lockfile
 ```
 
-The lockfile is authoritative. Do not use npm or Yarn in this repository.
+Do not use npm or Yarn in this repository.
 
-# Environment
+## Environment
 
-Copy `.env.example` to `.env.local` and use values from `pnpm db:start` for local development. Public variables contain only the project URL and publishable key. `SUPABASE_SECRET_KEY` is consumed only by the server-only account-bootstrap capability. Never add service-role/admin credentials to a `NEXT_PUBLIC_*` variable.
+Copy `.env.example` to an ignored `.env.local`. The required variable names are:
 
-- `local`: local Next.js plus local Supabase only.
-- `preview`: isolated preview/staging project with synthetic data; never the production project.
-- `production`: separate production project and secrets, created only after explicit approval.
-- `test`: synthetic configuration used by automated checks.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `APP_ORIGIN`
+- `APP_ENV`
+- `SUPABASE_SECRET_KEY`
 
-# Local Development
+Obtain local values from the local Supabase CLI output. Never commit `.env.local`, print credentials in reports, or place a secret/admin key in a `NEXT_PUBLIC_*` variable.
+
+`APP_ORIGIN` must exactly match the browser origin used for local development. Non-production local mode accepts canonical HTTP only for loopback or a private RFC1918 address; preview and production require HTTPS.
+
+## Local development
+
+Start Docker first, then run:
 
 ```bash
 pnpm db:start
+pnpm db:migrate
 pnpm dev
 ```
 
-The root page links to `/auth`; `/app` is a minimal protected shell rather than a wardrobe product screen. `/dev/ui` is available only outside production for token/primitives inspection. `/api/health` validates configuration without returning secret or database details.
+Open `http://localhost:3000` unless `APP_ORIGIN` specifies another allowed local address.
 
-# Supabase Local Development
+`pnpm dev` supervises Next.js and local preview workers. Those workers automatically prepare Bulk Import archives and private thumbnails, but deliberately do not claim Import Confirm or cleanup jobs. Import Confirm remains an explicit owner action in the UI.
+
+Useful local Supabase endpoints use the ports configured in `supabase/config.toml`: API `54321`, database `54322`, Studio `54323` and Mailpit `54324`. Treat them as local developer services, not public endpoints.
+
+Protected routes include:
+
+- `/app`
+- `/app/wardrobe`
+- `/app/import`
+- `/app/profile`
+- `/app/settings`
+
+The public Auth surface is `/auth`; its callback, confirmation and recovery routes are internal parts of that flow. `/dev/ui` is a non-production design-system inspection route, not an application setting.
+
+## Bulk Import behavior
+
+The current adapter accepts one source set of up to four image-only ZIP parts containing JPEG or PNG files. It does not accept an input manifest and never infers a thing's name, category, grouping or identity from a filename, timestamp, archive order, UUID-like text, hash or visual similarity.
+
+After upload, a worker validates and reads the archive, stages images and prepares private thumbnails. The owner then reviews every image and explicitly chooses `create`, `link`, `group` or `skip`. Confirmation is the only boundary that may write production wardrobe records. Retrying upload/preparation and repeating a confirmation are protected against overwrite and duplicate records; existing items can be updated only after an explicit owner-scoped selection.
+
+Long Prepare jobs renew their owner/job-protected lease before expiry. Storage downloads use bounded retry for transient server failures and retain full SHA-256 verification. These safeguards do not authorize cross-account access or weaken immutable uploads.
+
+## Database and generated types
+
+Apply pending local migrations without rebuilding the database:
 
 ```bash
-pnpm db:start
-pnpm db:reset
-pnpm test:db
-pnpm db:stop
-```
-
-The CLI uses `supabase/config.toml`. It must target the local container stack; never substitute the production database for development. No Storage bucket is created through Phase 7. Future wardrobe buckets must remain private.
-
-# Database Migrations
-
-Eleven ordered migrations under `supabase/migrations` create the approved 31 application tables, indexes, `pg_trgm`, deny-by-default RLS, narrow grants and one service-role-only idempotent `bootstrap_account` function. `pnpm db:reset` proves a fresh database can replay the entire history and controlled `supabase/seed.sql` vocabulary.
-
-Create future migrations through the Supabase CLI and commit the SQL. Do not make dashboard-only schema changes.
-
-# Generate DB Types
-
-With local Supabase running and fully migrated:
-
-```bash
+pnpm db:migrate
+pnpm db:lint
 pnpm db:types
 pnpm typecheck
 ```
 
-`src/infrastructure/database/database.types.ts` is generated infrastructure output and must not be edited manually. Database rows remain infrastructure types; domain/application semantics must use module-local contracts.
+`pnpm db:reset` is destructive and is only for an explicitly disposable local database. It replays the complete migration history and controlled seed; never run it against retained local data, preview or production.
 
-# Tests
+`src/infrastructure/database/database.types.ts` is generated output. Do not edit it manually.
+
+## Verification
+
+Safe application checks:
 
 ```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
 pnpm test
-pnpm test:db
-pnpm test:e2e
-```
-
-Unit tests cover environment parsing, application errors, log redaction, redirect allowlisting, exact-origin checks and scoped client-state cleanup. pgTAP covers schema/search, structural ownership, the RLS/grant matrix and account-bootstrap authority/idempotency. Playwright runs desktop/mobile auth and isolation flows plus axe accessibility checks. See `docs/TESTING.md`.
-
-# Quality Checks
-
-```bash
-pnpm check
-```
-
-This local application gate runs format check, lint, typecheck, unit tests, static migration inventory/RLS coverage, a lightweight committed-secret scan and the production build. Database and browser gates remain separate because they require containers and an installed browser respectively. CI runs all three groups.
-
-# Build
-
-```bash
+pnpm security:secrets
 pnpm build
-pnpm start
+git diff --check
 ```
 
-The production command uses Next.js's supported webpack build path because the current Turbopack CSS worker requires a loopback port that is unavailable in the constrained local runner; `pnpm dev` keeps the framework default. Production and preview builds require valid public Supabase configuration plus the server-only bootstrap key. `pnpm test:e2e` derives local credentials without printing them and rebuilds before starting the browser server.
+Database, Storage and browser checks have separate prerequisites and may create/delete only synthetic fixtures. Follow [docs/TESTING.md](docs/TESTING.md) before running them.
 
-# Project Structure
+The current retained local database has an independent known failure in `supabase/tests/database/007_bulk_import_mvp.test.sql`: `invalid staged object path`. It predates this documentation/copy work and is not a documentation regression. Do not hide it with an unrelated schema or fixture change.
 
-```text
-src/app/                 Next.js routes and framework boundaries
-src/modules/             Product module entry points; no product CRUD yet
-src/platform/            Environment, errors and safe logging policy
-src/infrastructure/      Browser/server Supabase adapters and DB types
-src/ui/                  Small semantic visual primitives
-supabase/migrations/     Reproducible schema history
-supabase/tests/database/ pgTAP constraints and authorization tests
-tests/unit/              Fast foundation tests
-tests/e2e/               Browser and accessibility smoke tests
-docs/                    Approved product/design/architecture records
-```
+## Security model
 
-# Security Rules
+- Account scope comes from the verified server session; browser-provided account/user/owner identifiers are never authorization authority.
+- Personal tables use forced RLS and known-ID User A/User B isolation.
+- Capability-specific privileged commands replace a generic service-role repository.
+- Cookie-backed mutations require exact-origin validation; redirect destinations are allowlisted.
+- Originals, renditions and staged archives stay in private buckets. Private responses use `private, no-store`; image delivery also uses `nosniff`.
+- Service-role credentials stay in server-only modules and must not enter browser bundles, URLs, logs or errors.
+- Logs use safe codes/counts and must not contain filenames, object keys, notes, pixels, tokens or provider payloads.
 
-- Browser IDs and values are untrusted; ownership is derived from verified Auth identity.
-- No service-role/admin client exists in the browser or shared client module.
-- RLS is forced on personal tables and ordinary browser roles receive no direct mutations.
-- Cross-account personal relationships use composite foreign keys.
-- Authenticated/private responses and signed URLs must use private/no-store caching when introduced.
-- Cookie-backed mutations must validate authentication, authorization, allowed Origin and request intent; SameSite is defense in depth, not the only CSRF control.
-- Logs accept only allowlisted scalar context and discard token, cookie, URL, note, image and payload-shaped keys.
-- Use only synthetic test identities and assets. Never commit real wardrobe data.
+## Environments and deployment
 
-# What Is Not Implemented Yet
+Local, preview and production use separate configuration and data boundaries. Preview should use an isolated Supabase project and synthetic data. Production requires an explicit deployment approval plus resolved region, backup, worker scheduling, email and retention gates.
 
-No onboarding, wardrobe CRUD, media upload/processing, Bulk Import parser/UI, Outfit Builder, wear tracking, Calendar/Insights, export/delete workflow, AI, weather, billing, Household sharing, analytics tracking, service worker/offline sync, production jobs, remote infrastructure or deployment exists.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the verified workflow and rollback considerations. No Vercel preview or production deployment is claimed by this README.
 
-# Next Phase
+## Documentation
 
-Phase 7 — Authentication & Privacy is implemented and locally tested. Do not start a broader product phase until the external Phase 7 review is complete.
+- [Project state](docs/PROJECT_STATE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Database](docs/DATABASE.md)
+- [Security](docs/SECURITY.md)
+- [Testing](docs/TESTING.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Decision log](docs/DECISIONS.md)
+- [Bulk Import source audit](docs/BULK_IMPORT_SOURCE_AUDIT.md)

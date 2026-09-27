@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import * as tus from "tus-js-client";
+import { useI18n } from "@/i18n/context";
 
 import { createSupabaseBrowserClient } from "@/infrastructure/supabase/browser-client";
 import { getPublicEnvironment } from "@/platform/env/public";
@@ -10,11 +11,12 @@ import { IMPORT_MAX_ARCHIVE_BYTES, IMPORT_MAX_PARTS } from "@/modules/import/mod
 
 type Progress = Readonly<{ part: number; percent: number }>;
 
-function publicMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Импорт не подготовлен.";
+function publicMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export function ImportChooser() {
+  const { t } = useI18n();
   const router = useRouter();
   const cancelUploadRef = useRef<(() => void) | null>(null);
   const activeSessionRef = useRef<{ id: string; version: number } | null>(null);
@@ -115,7 +117,7 @@ export function ImportChooser() {
         }
         setError("Импорт отменён; staged data поставлены на cleanup.");
       } else {
-        setError(publicMessage(caught));
+        setError(publicMessage(caught, "Импорт не подготовлен."));
       }
     } finally {
       cancelUploadRef.current = null;
@@ -127,12 +129,12 @@ export function ImportChooser() {
 
   return (
     <section className="rounded-xl border border-border-subtle bg-surface p-5 sm:p-6">
-      <h2 className="text-xl font-semibold">Choose</h2>
+      <h2 className="text-xl font-semibold">{t("Выбор архива")}</h2>
       <p className="mt-2 text-sm text-text-secondary">
-        Выберите до четырёх ZIP с JPEG/PNG. До явного Confirm вещи не создаются.
+        {t("Выберите до четырёх ZIP с JPEG/PNG. До явного Confirm вещи не создаются.")}
       </p>
       <label className="mt-5 block">
-        <span className="mb-2 block font-medium">Архивы</span>
+        <span className="mb-2 block font-medium">{t("Архивы")}</span>
         <input
           className="field"
           type="file"
@@ -159,13 +161,13 @@ export function ImportChooser() {
       </label>
       {files.length ? (
         <p className="mt-3 text-sm" aria-live="polite">
-          Выбрано архивов: {files.length}
+          {t("Выбрано архивов: {count}", { count: files.length })}
         </p>
       ) : null}
       {progress ? (
         <div className="mt-4" role="status" aria-live="polite">
           <p className="text-sm">
-            Архив {progress.part}: {progress.percent}%
+            {t("Архив {part}: {percent}%", { part: progress.part, percent: progress.percent })}
           </p>
           <progress className="w-full" value={progress.percent} max={100}>
             {progress.percent}%
@@ -177,17 +179,17 @@ export function ImportChooser() {
           className="mt-4 rounded-lg bg-[var(--aw-error-surface)] p-3 text-[var(--aw-error)]"
           role="alert"
         >
-          {error}
+          {t(error)}
         </p>
       ) : null}
       <div className="mt-5 flex flex-wrap gap-3">
         <button
-          className="min-h-12 rounded-lg bg-accent px-5 font-semibold text-white disabled:opacity-50"
+          className="min-h-12 rounded-lg bg-accent px-5 font-semibold text-inverse disabled:opacity-50"
           type="button"
           disabled={busy || files.length === 0}
           onClick={() => void start()}
         >
-          {busy ? "Загружаем…" : "Prepare"}
+          {busy ? t("Загружаем…") : t("Загрузить")}
         </button>
         {busy ? (
           <button
@@ -195,7 +197,7 @@ export function ImportChooser() {
             type="button"
             onClick={() => cancelUploadRef.current?.()}
           >
-            Остановить
+            {t("Остановить")}
           </button>
         ) : null}
       </div>

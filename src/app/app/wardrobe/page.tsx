@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { z } from "zod";
 
+import { getServerI18n } from "@/i18n/server";
+
 import {
   MobileWardrobeFilterSheet,
   WardrobeFilterForm,
@@ -34,6 +36,7 @@ function uuid(value: string | undefined): string | undefined {
 export default async function WardrobePage({
   searchParams,
 }: Readonly<{ searchParams: Promise<Params> }>) {
+  const { t } = await getServerI18n();
   const params = await searchParams;
   const archivedItemId = uuid(one(params.archived));
   const input = {
@@ -75,64 +78,64 @@ export default async function WardrobePage({
     <>
       {input.query?.trim() ? <input type="hidden" name="q" value={input.query.trim()} /> : null}
       <label>
-        <span className="mb-1 block text-sm font-medium">Категория</span>
+        <span className="mb-1 block text-sm font-medium">{t("Категория")}</span>
         <select className="field" name="category" defaultValue={input.categoryId ?? ""}>
-          <option value="">Все</option>
+          <option value="">{t("Все")}</option>
           {references.categories.map((entry) => (
             <option key={entry.id} value={entry.id}>
               {entry.parentId ? "— " : ""}
-              {entry.label}
+              {t(entry.label)}
             </option>
           ))}
         </select>
       </label>
       <label>
-        <span className="mb-1 block text-sm font-medium">Цвет</span>
+        <span className="mb-1 block text-sm font-medium">{t("Цвет")}</span>
         <select className="field" name="color" defaultValue={input.colorId ?? ""}>
-          <option value="">Все</option>
+          <option value="">{t("Все")}</option>
           {references.colors.map((entry) => (
             <option key={entry.id} value={entry.id}>
-              {entry.label}
+              {t(entry.label)}
             </option>
           ))}
         </select>
       </label>
       <label>
-        <span className="mb-1 block text-sm font-medium">Сезон</span>
+        <span className="mb-1 block text-sm font-medium">{t("Сезон")}</span>
         <select className="field" name="season" defaultValue={input.seasonId ?? ""}>
-          <option value="">Все</option>
+          <option value="">{t("Все")}</option>
           {references.seasons.map((entry) => (
             <option key={entry.id} value={entry.id}>
-              {entry.label}
+              {t(entry.label)}
             </option>
           ))}
         </select>
       </label>
       <label>
-        <span className="mb-1 block text-sm font-medium">Тег / назначение / стиль</span>
+        <span className="mb-1 block text-sm font-medium">{t("Тег / назначение / стиль")}</span>
         <select className="field" name="tag" defaultValue={input.tagId ?? ""}>
-          <option value="">Все</option>
+          <option value="">{t("Все")}</option>
           {references.tags.map((entry) => (
             <option key={entry.id} value={entry.id}>
-              {entry.label}
+              {t(entry.label)}
             </option>
           ))}
         </select>
       </label>
       <label>
-        <span className="mb-1 block text-sm font-medium">Статус</span>
+        <span className="mb-1 block text-sm font-medium">{t("Статус")}</span>
         <select className="field" name="status" defaultValue={input.lifecycle}>
-          <option value="active">Активные</option>
-          <option value="archived">Архив</option>
+          <option value="active">{t("Активные")}</option>
+          <option value="archived">{t("Архив")}</option>
         </select>
       </label>
       <label className="choice">
         <input type="checkbox" name="favorite" value="1" defaultChecked={input.favorite} />
-        Только избранное
+        {t("Только избранное")}
       </label>
       <div className="flex gap-3">
-        <button className="min-h-12 flex-1 rounded-lg bg-accent px-4 font-semibold text-white">
-          Применить
+        <button className="min-h-12 flex-1 rounded-lg bg-accent px-4 font-semibold text-inverse">
+          {t("Применить")}
         </button>
         <Link
           href={
@@ -142,7 +145,7 @@ export default async function WardrobePage({
           }
           className="inline-flex min-h-12 items-center px-2 text-sm underline"
         >
-          Сбросить фильтры
+          {t("Сбросить фильтры")}
         </Link>
       </div>
     </>
@@ -152,28 +155,32 @@ export default async function WardrobePage({
     <>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-text-tertiary">Приватный каталог</p>
-          <h1 className="text-3xl font-semibold">Гардероб</h1>
+          <p className="text-sm text-text-tertiary">{t("Приватный каталог")}</p>
+          <h1 className="text-3xl font-semibold">{t("Гардероб")}</h1>
           <p className="mt-1 text-sm text-text-secondary" aria-live="polite">
-            Показано: {items.length}
-            {hasMore ? " · есть ещё" : items.length ? " · конец списка" : ""}
+            {t("Показано: {count}", { count: items.length })}
+            {hasMore ? t(" · есть ещё") : items.length ? t(" · конец списка") : ""}
           </p>
         </div>
-        <ButtonLink href="/app/wardrobe/new">+ Добавить вещь</ButtonLink>
+        <ButtonLink href="/app/wardrobe/new">{t("+ Добавить вещь")}</ButtonLink>
       </header>
       {archivedItem?.lifecycleState === "archived" ? (
         <div
           role="status"
           className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--aw-success-surface)] p-4 text-[var(--aw-success)]"
         >
-          <span>Архивирование «{archivedItem.displayName ?? "вещь"}» выполнено.</span>
+          <span>
+            {t("Архивирование «{name}» выполнено.", {
+              name: archivedItem.displayName ?? t("вещь"),
+            })}
+          </span>
           <form action={setWardrobeItemStateAction}>
             <input type="hidden" name="itemId" value={archivedItem.id} />
             <input type="hidden" name="expectedVersion" value={archivedItem.version} />
             <input type="hidden" name="action" value="restore" />
             <input type="hidden" name="returnTo" value={current} />
             <button className="min-h-11 rounded-lg border border-current px-4 font-semibold underline">
-              Отменить архивирование
+              {t("Отменить архивирование")}
             </button>
           </form>
         </div>
@@ -184,7 +191,7 @@ export default async function WardrobePage({
           role="alert"
           className="mb-5 rounded-lg bg-[var(--aw-error-surface)] p-4 text-[var(--aw-error)]"
         >
-          Изменение не применено: обновите страницу и повторите.
+          {t("Изменение не применено: обновите страницу и повторите.")}
         </p>
       ) : null}
 
@@ -198,16 +205,16 @@ export default async function WardrobePage({
           <input type="hidden" name="status" value="archived" />
         ) : null}
         <label className="flex-1">
-          <span className="sr-only">Поиск по гардеробу</span>
+          <span className="sr-only">{t("Поиск по гардеробу")}</span>
           <input
             className="field"
             name="q"
             defaultValue={input.query ?? ""}
-            placeholder="Поиск по названию, бренду, заметкам и тегам"
+            placeholder={t("Поиск по названию, бренду, заметкам и тегам")}
           />
         </label>
         <button className="min-h-12 rounded-lg border border-border-strong bg-surface px-5 font-semibold">
-          Найти
+          {t("Найти")}
         </button>
       </form>
 
@@ -218,7 +225,7 @@ export default async function WardrobePage({
       </MobileWardrobeFilterSheet>
 
       <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
-        <aside aria-label="Фильтры гардероба" className="hidden lg:block">
+        <aside aria-label={t("Фильтры гардероба")} className="hidden lg:block">
           <WardrobeFilterForm
             autoApply
             className="sticky top-4 grid gap-4 rounded-xl border border-border-subtle bg-surface p-5"
@@ -227,19 +234,19 @@ export default async function WardrobePage({
           </WardrobeFilterForm>
         </aside>
 
-        <section id="wardrobe-grid" aria-label="Вещи гардероба">
+        <section id="wardrobe-grid" aria-label={t("Вещи гардероба")}>
           {items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-strong bg-surface p-8 text-center">
               <h2 className="text-xl font-semibold">
-                {hasSearchOrFilters ? "Ничего не найдено" : "Гардероб пока пуст"}
+                {hasSearchOrFilters ? t("Ничего не найдено") : t("Гардероб пока пуст")}
               </h2>
               <p className="mt-2 text-text-secondary">
                 {hasSearchOrFilters
-                  ? "Измените запрос или сбросьте один из фильтров."
-                  : "Добавьте первую физическую вещь — изображение можно подключить позже."}
+                  ? t("Измените запрос или сбросьте один из фильтров.")
+                  : t("Добавьте первую физическую вещь — изображение можно подключить позже.")}
               </p>
               <ButtonLink href="/app/wardrobe/new" className="mt-5">
-                Добавить вещь
+                {t("Добавить вещь")}
               </ButtonLink>
             </div>
           ) : (
@@ -255,35 +262,35 @@ export default async function WardrobePage({
                       className="block"
                     >
                       <div className="flex aspect-square items-center justify-center bg-surface-muted text-sm text-text-secondary">
-                        Без изображения
+                        {t("Без изображения")}
                       </div>
                       <div className="p-4">
                         <div className="mb-2 flex flex-wrap gap-2 text-xs">
                           {item.recordState === "draft" ? (
                             <span className="rounded-full bg-surface-selected px-2 py-1">
-                              Черновик
+                              {t("Черновик")}
                             </span>
                           ) : null}
                           {item.lifecycleState === "archived" ? (
                             <span className="rounded-full bg-surface-selected px-2 py-1">
-                              В архиве
+                              {t("В архиве")}
                             </span>
                           ) : null}
                           {item.isFavorite ? (
                             <span className="rounded-full bg-surface-selected px-2 py-1">
-                              ★ Избранное
+                              {t("★ Избранное")}
                             </span>
                           ) : null}
                         </div>
                         <p className="font-semibold">
-                          {item.displayName ?? "Черновик без названия"}
+                          {item.displayName ?? t("Черновик без названия")}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {item.categoryLabel ?? "Без категории"}
+                          {item.categoryLabel ? t(item.categoryLabel) : t("Без категории")}
                           {item.brand ? ` · ${item.brand}` : ""}
                         </p>
                         <p className="mt-3 line-clamp-1 text-xs text-text-tertiary">
-                          {item.tags.map(({ label }) => label).join(" · ") || "Теги не заданы"}
+                          {item.tags.map(({ label }) => label).join(" · ") || t("Теги не заданы")}
                         </p>
                       </div>
                     </Link>
@@ -304,11 +311,15 @@ export default async function WardrobePage({
                           className="min-h-11 w-full rounded-lg text-sm font-medium hover:bg-surface-muted"
                           aria-label={
                             item.isFavorite
-                              ? `Убрать ${item.displayName ?? "вещь"} из избранного`
-                              : `Добавить ${item.displayName ?? "вещь"} в избранное`
+                              ? t("Убрать {name} из избранного", {
+                                  name: item.displayName ?? t("вещь"),
+                                })
+                              : t("Добавить {name} в избранное", {
+                                  name: item.displayName ?? t("вещь"),
+                                })
                           }
                         >
-                          {item.isFavorite ? "★ В избранном" : "☆ В избранное"}
+                          {item.isFavorite ? t("★ В избранном") : t("☆ В избранное")}
                         </button>
                       </form>
                     ) : null}
@@ -321,13 +332,13 @@ export default async function WardrobePage({
                     href={loadMoreHref}
                     className="inline-flex min-h-12 items-center rounded-lg border border-border-strong bg-surface px-5 font-semibold"
                   >
-                    Показать ещё
+                    {t("Показать ещё")}
                   </Link>
                 </div>
               ) : null}
               {hasMore && input.limit >= WARDROBE_MAX_VISIBLE ? (
                 <p className="mt-6 text-center text-sm text-text-secondary">
-                  Достигнут безопасный предел выдачи. Уточните поиск или фильтры.
+                  {t("Достигнут безопасный предел выдачи. Уточните поиск или фильтры.")}
                 </p>
               ) : null}
             </>

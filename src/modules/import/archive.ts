@@ -45,8 +45,13 @@ function safePath(name: string): boolean {
     return false;
   }
   if (/^[a-z]:/iu.test(name)) return false;
-  const segments = name.replaceAll("\\", "/").split("/");
+  const canonicalSeparators = name.replaceAll("\\", "/");
+  const path = canonicalSeparators.endsWith("/")
+    ? canonicalSeparators.slice(0, -1)
+    : canonicalSeparators;
+  const segments = path.split("/");
   return (
+    path.length > 0 &&
     segments.length <= IMPORT_MAX_PATH_DEPTH &&
     Buffer.byteLength(name.normalize("NFC"), "utf8") <= IMPORT_MAX_PATH_BYTES &&
     !segments.some((segment) => segment === ".." || segment === "." || segment === "")
@@ -90,6 +95,7 @@ export function* iterateImageOnlyZip(buffer: Buffer): Generator<ZipImageEntry> {
   let cursor = centralOffset;
   let expandedTotal = 0;
   let compressedTotal = 0;
+  let imageCount = 0;
   for (let ordinal = 0; ordinal < count; ordinal += 1) {
     if (cursor + 46 > buffer.length || buffer.readUInt32LE(cursor) !== CENTRAL) {
       archiveError("zip_central_corrupt");
@@ -114,32 +120,39 @@ export function* iterateImageOnlyZip(buffer: Buffer): Generator<ZipImageEntry> {
     if (name.includes("\ufffd")) archiveError("zip_filename_encoding");
     if (!safePath(name)) archiveError("zip_path_traversal");
     const normalizedPath = name.replaceAll("\\", "/").normalize("NFC").toLocaleLowerCase("en-US");
+    const isDirectory = normalizedPath.endsWith("/");
     if (normalizedPaths.has(normalizedPath)) archiveError("zip_duplicate_path");
     normalizedPaths.add(normalizedPath);
     if (!normalizedPath.includes("/")) archiveError("zip_root_required");
     const entryRoot = normalizedPath.split("/", 1)[0] ?? "";
     rootDirectory ??= entryRoot;
     if (rootDirectory !== entryRoot) archiveError("zip_multiple_roots");
-    if (name.endsWith("/")) archiveError("zip_directory_entry_rejected");
-    if (fileType !== 0 && fileType !== 0x8000) archiveError("zip_link_or_device_rejected");
-    if ((unixMode & 0o111) !== 0) archiveError("zip_executable_rejected");
-    if (/\.(?:zip|7z|rar|tar|gz|bz2|xz)$/iu.test(name)) archiveError("nested_archive_rejected");
-    if (!/\.(?:jpe?g|png)$/iu.test(name)) archiveError("non_image_entry_rejected");
     if (method !== 0 && method !== 8) archiveError("zip_compression_rejected");
-    if (expandedSize <= 0 || expandedSize > IMPORT_MAX_ENTRY_BYTES) {
-      archiveError("zip_entry_size_limit");
-    }
-    if (
-      compressedSize === 0 ||
-      expandedSize / compressedSize > IMPORT_MAX_ENTRY_COMPRESSION_RATIO
-    ) {
-      archiveError("zip_compression_ratio_limit");
-    }
-    expandedTotal += expandedSize;
-    compressedTotal += compressedSize;
-    if (expandedTotal > IMPORT_MAX_EXPANDED_BYTES) archiveError("zip_expanded_size_limit");
-    if (expandedTotal / compressedTotal > IMPORT_MAX_ARCHIVE_COMPRESSION_RATIO) {
-      archiveError("zip_archive_ratio_limit");
+    if (isDirectory) {
+      if (fileType !== 0 && fileType !== 0x4000) archiveError("zip_link_or_device_rejected");
+      if (compressedSize > 64 || expandedSize !== 0 || expectedCrc !== 0) {
+        archiveError("zip_directory_entry_invalid");
+      }
+    } else {
+      if (fileType !== 0 && fileType !== 0x8000) archiveError("zip_link_or_device_rejected");
+      if ((unixMode & 0o111) !== 0) archiveError("zip_executable_rejected");
+      if (/\.(?:zip|7z|rar|tar|gz|bz2|xz)$/iu.test(name)) archiveError("nested_archive_rejected");
+      if (!/\.(?:jpe?g|png)$/iu.test(name)) archiveError("non_image_entry_rejected");
+      if (expandedSize <= 0 || expandedSize > IMPORT_MAX_ENTRY_BYTES) {
+        archiveError("zip_entry_size_limit");
+      }
+      if (
+        compressedSize === 0 ||
+        expandedSize / compressedSize > IMPORT_MAX_ENTRY_COMPRESSION_RATIO
+      ) {
+        archiveError("zip_compression_ratio_limit");
+      }
+      expandedTotal += expandedSize;
+      compressedTotal += compressedSize;
+      if (expandedTotal > IMPORT_MAX_EXPANDED_BYTES) archiveError("zip_expanded_size_limit");
+      if (expandedTotal / compressedTotal > IMPORT_MAX_ARCHIVE_COMPRESSION_RATIO) {
+        archiveError("zip_archive_ratio_limit");
+      }
     }
     if (localOffset + 30 > buffer.length || buffer.readUInt32LE(localOffset) !== LOCAL) {
       archiveError("zip_local_corrupt");
@@ -162,6 +175,22 @@ export function* iterateImageOnlyZip(buffer: Buffer): Generator<ZipImageEntry> {
     const dataOffset = localOffset + 30 + localNameLength + localExtraLength;
     if (dataOffset + compressedSize > centralOffset) archiveError("zip_entry_bounds");
     const compressed = buffer.subarray(dataOffset, dataOffset + compressedSize);
+    if (isDirectory) {
+      let directoryBytes: Buffer;
+      try {
+        directoryBytes =
+          method === 0
+            ? Buffer.from(compressed)
+            : inflateRawSync(compressed, { maxOutputLength: 1 });
+      } catch {
+        archiveError("zip_directory_entry_invalid");
+      }
+      if (directoryBytes.length !== 0 || crc32(directoryBytes) !== expectedCrc) {
+        archiveError("zip_directory_entry_invalid");
+      }
+      cursor = end;
+      continue;
+    }
     let bytes: Buffer;
     try {
       bytes =
@@ -174,10 +203,12 @@ export function* iterateImageOnlyZip(buffer: Buffer): Generator<ZipImageEntry> {
     if (bytes.length !== expandedSize || crc32(bytes) !== expectedCrc) {
       archiveError("zip_integrity_failed");
     }
+    imageCount += 1;
     yield { ordinal, privateName: name, bytes };
     cursor = end;
   }
   if (cursor !== centralOffset + centralSize) archiveError("zip_central_size_mismatch");
+  if (imageCount === 0) archiveError("zip_image_required");
 }
 
 export function readImageOnlyZip(buffer: Buffer): ZipImageEntry[] {

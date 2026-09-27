@@ -868,3 +868,27 @@ Phase 9 follows D-098. The browser transfers an original directly to private Sup
 The media aggregate deliberately keeps `media_assets` (source lifecycle), `media_bindings` (item/variant role, view and ordering) and `media_renditions` (derived bytes) separate. `AppearanceVariant` describes a real physical presentation of one item; `ImageView` describes a camera/viewpoint and cannot create a new variant. ClothingItem archive does not trigger media deletion.
 
 All privileged mutations are capability-specific. Browser input never controls account, user or owner identifiers. Storage RLS independently constrains the direct-upload surface, while database RLS independently constrains media metadata reads. Cleanup calls the Storage API and only then reconciles database state; application SQL never inserts, updates or deletes `storage.objects` rows directly.
+
+# Current Implemented Surface (2026-09-27)
+
+The implemented application remains one Next.js modular monolith. Public routes provide the product home and Auth flows. Protected routes are `/app`, `/app/wardrobe`, `/app/import`, `/app/profile` and `/app/settings`; the request proxy and each route's server boundary resolve the verified Auth identity before owner data is read. `/dev/ui` is a non-production design-system inspection route and is not an account setting.
+
+The active product slices are:
+
+- Auth/account: SSR cookie refresh, signup/login/logout/recovery, PKCE email change, current-password-verified password replacement, profile display name and private account API.
+- Wardrobe Core: owner-scoped item reads plus capability-specific create/edit/favorite/archive/restore commands.
+- Private media: authenticated TUS upload to private Storage, quarantined validation, immutable renditions and authorized same-origin delivery.
+- Bulk Import: private image-only ZIP staging, automatic Prepare/private thumbnails, manual create/link/group/skip decisions, sealed Preview, explicit Confirm and itemized Results.
+- Preferences: one SSR-stable ru/en dictionary, anonymous locale cookie and authenticated locale/regional preferences in `account_preferences`.
+
+Browser input never chooses account ownership. Read paths use the current user JWT plus RLS; invariant-heavy writes use narrowly named server capabilities rather than a generic privileged repository. Profile and settings mutations are exact-origin and optimistic-versioned where they update application rows.
+
+Local `pnpm dev` supervises Next.js and preview-only import/media workers. Automatic local work is limited to parsing and thumbnail/image preparation; it does not claim Import Confirm or cleanup. Hosted worker scheduling, cleanup operations, object backup/restore and production deployment remain unvalidated.
+
+Environment behavior is intentionally different:
+
+- `local`: local Docker/Supabase, loopback or approved private WSL HTTP origin, ignored `.env.local`;
+- `preview`: separate Supabase project, exact HTTPS Vercel preview origin and synthetic data;
+- `production`: separate approved project/origin, HTTPS only and unresolved deployment gates.
+
+Operational steps and rollback constraints are documented in `docs/DEPLOYMENT.md`.

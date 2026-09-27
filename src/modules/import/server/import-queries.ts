@@ -65,7 +65,7 @@ export async function getImportReview(sessionId: string) {
   const assetIds = (assetResult.data ?? []).map((asset) => asset.media_asset_id);
   const [mediaResult, renditionResult] = assetIds.length
     ? await Promise.all([
-        client.from("media_assets").select("id,processing_state").in("id", assetIds),
+        client.from("media_assets").select("id,processing_state,version").in("id", assetIds),
         client
           .from("media_renditions")
           .select("id,media_asset_id,rendition_kind,width_px,height_px")
@@ -78,9 +78,7 @@ export async function getImportReview(sessionId: string) {
         { data: [], error: null },
       ];
   if (mediaResult.error || renditionResult.error) throw new Error("import_media_read_failed");
-  const mediaStates = new Map(
-    (mediaResult.data ?? []).map((asset) => [asset.id, asset.processing_state]),
-  );
+  const mediaStates = new Map((mediaResult.data ?? []).map((asset) => [asset.id, asset]));
   const renditionByAsset = new Map<
     string,
     { id: string; width_px: number | null; height_px: number | null }
@@ -122,7 +120,8 @@ export async function getImportReview(sessionId: string) {
     },
     assets: (assetResult.data ?? []).map((asset) => ({
       ...asset,
-      processing_state: mediaStates.get(asset.media_asset_id) ?? "missing",
+      processing_state: mediaStates.get(asset.media_asset_id)?.processing_state ?? "missing",
+      version: Number(mediaStates.get(asset.media_asset_id)?.version ?? 0),
       rendition: renditionByAsset.get(asset.media_asset_id) ?? null,
     })),
     issues,
